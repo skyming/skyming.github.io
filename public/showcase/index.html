@@ -1,0 +1,472 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>陈列柜 - OneV's Den</title>
+	<meta name="author" content="onevcat">
+
+	
+	<meta name="description" content="VVDocumenter - Xcode缺失已久的文档插件 2013年7月21日 一直以来虽然ObjC代码因为其可读性极强，而不太需要时常查阅文档，但是其实对于大多数人（包括我自己）来说，可能为方法或变量取一个好名字并不是那么简单的事情。这时候可能就需要文档或者注释来帮助之后的开发者（包括大家自己 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="OneV's Den" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://onevcat.com/showcase/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+<script type="text/javascript">var switchTo5x=false;</script>
+<script type="text/javascript" src="http://w.sharethis.com/button/buttons.js"></script>
+<script type="text/javascript">stLight.options({publisher: "496dac80-40ba-487b-b557-af2d3629eb28", doNotHash: true, doNotCopy: true, hashAddressBar: false});</script>
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		document.write("<img src='http://www.gravatar.com/avatar/" + MD5("onev@onevcat.com") + "?s=160' alt='Profile Picture' style='width: 160px;'");
+	</script>
+</div>
+<h1><a href="/">OneV's Den</a></h1>
+<p class="subtitle">上善若水，人淡如菊</p>
+<p class="subtitle">iOS/Mac，Unity3D开发者，现就职于日本创意公司Kayac，正在修行，探求创意之源</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/aboutme/" target="_blank">关于我</a></li>
+  <li><a href="/blog/archives">全部文章</a></li>
+  <li><a href="http://project.onevcat.com">我的项目</a></li>
+  <li><a href="https://itunes.apple.com/cn/app/id791903475?ls=1&mt=8">	Fanche Do - 番茄工作法工具</a></li>
+  <li><a href="https://itunes.apple.com/cn/app/id562520527?ls=1&mt=8">	Our Money - 多人同步记账</a></li>
+  <li><a href="https://itunes.apple.com/cn/app/id646243166?ls=1&mt=8">	Volume Recorder - 音量录音机</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		<a class="weibo" href="http://www.weibo.com/onevcat" title="Sina Weibo">Weibo</a>
+		
+		
+		<a class="facebook" href="http://www.facebook.com/onevcat" title="Facebook">Facebook</a>
+		
+		
+		<a class="google" href="https://plus.google.com/107108267983477358170" rel="author" title="Google+">Google+</a>
+		
+		
+		<a class="twitter" href="http://twitter.com/onevcat" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/onevcat" title="GitHub">GitHub</a>
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+<a href="http://eepurl.com/wNSkj"><script type="text/javascript" language="JavaScript" src="http://onevcat.us5.list-manage.com/subscriber-count?b=32&u=3244d6df-04b2-4c3b-bfb2-06ac1dd40a00&id=cfde66e507"></script></a>
+
+<script type="text/javascript" src="/javascripts/open-in-blank.js"></script>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="page">
+    
+    <h1 class="title">陈列柜</h1>
+    
+    <div class="entry-content"><h1><a href="https://github.com/onevcat/VVDocumenter-Xcode">VVDocumenter - Xcode缺失已久的文档插件</a></h1>
+
+<p><code>2013年7月21日</code></p>
+
+<p><img class="right" src="http://img.onevcat.com/2013/VVDocumenter.png"></p>
+
+<p><a href="http://flattr.com/thing/1710755/onevcatVVDocumenter-Xcode-on-GitHub" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></p>
+
+<p>一直以来虽然ObjC代码因为其可读性极强，而不太需要时常查阅文档，但是其实对于大多数人（包括我自己）来说，可能为方法或变量取一个好名字并不是那么简单的事情。这时候可能就需要文档或者注释来帮助之后的开发者（包括大家自己）尽快熟悉和方便修改。但是用Xcode写文档是一件让人很头疼的事情，Xcode对写文档的支持几乎为0，没有像VS之类的成熟IDE的方便的方法，一直以来都是依靠像Snippet这样的东西，然后自己辛苦填写大量已有的内容。</p>
+
+<p>之前看到一个用<a href="http://blog.chukong-inc.com/index.php/2012/05/16/xcode4_fast_doxygen/">Ruby+系统服务来生成注释的方案</a>，但是每次要自己去选还要按快捷键，总觉得是很麻烦的事情。借鉴其他平台IDE一般都是采用三个斜杠（<code>///</code>）来生成文档注释的方法，所以也为Xcode写了一个类似的。用法很简单，在要写文档的代码上面连打三个斜杠，就能自动提取参数等生成规范的Javadoc格式文档注释。<strong>VVDocumenter</strong>整个项目MIT开源，并且扔在github上了，有兴趣的童鞋可以从下面的链接找到，欢迎大家加星fork以及给我发pull request来改善这个插件。</p>
+
+<p>Writing document is so important for developing, but it is really painful with Xcode. Think about how much time you are wasting in pressing &#8216;*&#8217; or &#8216;/&#8217;, and typing the parameters again and again. Now, you can find the method (or any code) you want to document to, and type in ///, the document will be generated for you and all params and return will be extracted into a beatiful Javadoc style. You can just fill the inline placeholders to finish your document。</p>
+
+<h2>Github页面</h2>
+
+<ul>
+<li><a href="https://github.com/onevcat/VVDocumenter-Xcode">https://github.com/onevcat/VVDocumenter-Xcode</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://unirate.onevcat.com/">UniRate - 更好的即开即用Unity评价提醒插件</a></h1>
+
+<p><code>2013年7月18日</code></p>
+
+<p><img class="right" src="http://img.onevcat.com/2013/unirate-icon.png"></p>
+
+<p>UniRate是一个帮助Unity移动游戏开发者简单集成AppStore/Google Play Market评分提示功能的插件。当用户打开应用指定次数和天数时，将弹出窗口提示用户评价应用。用户如果选择评价，UniRate将自动引导用户前往对应的页面进行评价。用户也可以选择稍后评价或不评价。采用这样的策略可以得到尽可能多的5星评论，对于推广应用很有好处。</p>
+
+<p>UniRate的集成和使用非常简单，在拖拽一次就完美工作的同时，也提供了各种详细的设定，可以使UniRate按照设定工作。对于UniRate，我会提供完整的支持和更新，详细可以参见下面的链接。</p>
+
+<p>UniRate is a Unity package to help you promote you mobile games by prompting users to rate the app after using it for a few days or times. Integrating UniRate to your project is deadly simple as a drag &amp; drop. It will count the using of the times and days automatically and if the conditions you set are met, a native prompt will pop up and user can decide whether rate it or not.</p>
+
+<p>This approach is one of the best ways to get positive app reviews by targeting only regular users (who presumably like the game or they wouldn&#8217;t keep playing it).</p>
+
+<p>Although UniRate is very easy to use, it can be very powerful and you can tweak it performs exactly as you want. For more detailed description, please have a look at the online manual. All code is well documented and you can find online manual and forum support in links below. Hope you use it happily!</p>
+
+<h2>Unity Asset Store页面</h2>
+
+<ul>
+<li><a href="https://www.assetstore.unity3d.com/#/content/10116">https://www.assetstore.unity3d.com/#/content/10116</a></li>
+</ul>
+
+
+<h2>用户手册</h2>
+
+<ul>
+<li><a href="https://github.com/onevcat/UniRate/wiki/UniRate-Manual">https://github.com/onevcat/UniRate/wiki/UniRate-Manual</a></li>
+</ul>
+
+
+<h2>代码文档</h2>
+
+<ul>
+<li><a href="http://unirate.onevcat.com/reference/class_uni_rate.html">http://unirate.onevcat.com/reference/class_uni_rate.html</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="https://itunes.apple.com/cn/app/volume-recorder/id646243166">Volume Recorder - 音量录音机</a></h1>
+
+<p><code>2013年6月29日</code></p>
+
+<p><img class="right" src="http://img.onevcat.com/2013/VR_icon.png"></p>
+
+<p>音量录音机（Volume Recorder）是一款帮助您解决梦话、会议或者嘈杂情景下录音需求的app。它可以根据监测到的音量来自动进行录音，您能够在获得所有录音信息的同时节省您的设备空间和电量。这是一个免费应用，也不会包含任何广告或者录音限制等，唯一的限制是您只有通过内购完全版才能将录音导出，同时可以获得同步至Dropbox等更多功能。</p>
+
+<p>对于录音的处理，由于在预想的使用情景中可能面临时间长，碎片多等问题，实现时采用了比较低层级的手段，可以说是被迫读了一些C和C++的代码。因为其实之前在绝大多数情况下我都在和高层级的API和界面交互打交道，所以对于纯C的代码还是比较怵的，不过幸好坚持下来并且完成了。回头想一想，收获是很大的，希望这会成为一个转机吧。</p>
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li><a href="https://itunes.apple.com/cn/app/volume-recorder/id646243166">https://itunes.apple.com/cn/app/volume-recorder/id646243166</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://onevcat.com/2012/12/xuporter/">XUPorter - Unity3D编译XCode工程的依赖管理</a></h1>
+
+<p><code>2013年5月11日</code></p>
+
+<p><img class="right" src="http://img.onevcat.com/2013/unity-xuporter-logo.jpg"></p>
+
+<p>XUPorter是一个能够在Unity3D生成Xcode工程文件后，根据配置文件自动添加依赖库和引用文件的工具。它使用<a href="http://docs.unity3d.com/Documentation/ScriptReference/PostProcessBuildAttribute.html">PostProcessBuild</a>标签，在编译后寻找配置文件并修改XCode工程文件，完全运行于Unity3D编辑器中，而不需要涉及PostprocessBuildPlayer的脚本编写和调试，十分方便。</p>
+
+<p>这个项目起源于darktable的<a href="https://bitbucket.org/darktable/mod-pbxproj/overview">Mod PBXProj</a>，适用版本为Unity3.5及以上，以及Xcode 4.x。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://onevcat.com/2012/12/xuporter/">http://onevcat.com/2012/12/xuporter/</a></li>
+</ul>
+
+
+<h2>Github页面</h2>
+
+<ul>
+<li><a href="https://github.com/onevcat/XUPorter">https://github.com/onevcat/XUPorter</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://onevcat.com/2013/04/our-money-app/">Our Money - 云端协同记账</a></h1>
+
+<p><code>2013年3月21日</code></p>
+
+<p><img class="right" src="http://img.onevcat.com/2013/OurMoneyIcon.png"></p>
+
+<p>Our Money是我在<a href="http://www.kayac.com">Kayac</a>工作期间，用业余时间开发的一款云端多人协同记账的iOS应用。该app最大的特点是可以很简单地实现多人共享一个账本进行记账，从而免去了汇总和统计的麻烦（想像一下老公每天要记住自己的开销，然后晚上回家向老婆汇报的场景）。简单高效的UI以及完全无感的自动后端同步，可以帮助养成记账的良好习惯，进而追踪自己的日常开销。这是完全由自己独立完成的第二款应用，在之前<a href="http://www.onevcat.com/showcase/pomodoro_do/">Pomodoro Do</a>的开发中积累的一些经验得到了很好的运用。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://onevcat.com/2013/04/our-money-app/">http://onevcat.com/2013/04/our-money-app/</a></li>
+</ul>
+
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li><a href="http://itunes.apple.com/cn/app/pomodoro-do/id533469911?ls=1&amp;mt=8">https://itunes.apple.com/cn/app/our-money/id562520527?ls=1&amp;mt=8</a></li>
+</ul>
+
+
+<h2>官方网站</h2>
+
+<ul>
+<li><a href="http://ourmoney.onevcat.com/">http://ourmoney.onevcat.com/</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://www.onevcat.com/showcase/quizkingdom/">QuizKingdom</a></h1>
+
+<h3>冒険クイズキングダム</h3>
+
+<p><code>2013年1月30日</code></p>
+
+<p><img class="right" src="http://www.onevcat.com/wp-content/uploads/2011/12/mzl.eyzgzwwu.png"></p>
+
+<p>QuizKingdom（冒険クイズキングダム）是我加入Kayac后参与开发的第一款作品。该游戏是iOS及Android平台的基于问答的含有RPG元素的益智类游戏。QuizKingdom是由Unity3D开发的，游戏内容十分丰富，日本区下载量超过了<strong><em>100万次</em></strong>。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://www.onevcat.com/showcase/quizkingdom/">http://www.onevcat.com/showcase/quizkingdom/</a></li>
+</ul>
+
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li><a href="https://itunes.apple.com/jp/app/mao-xiankuizukingudamu/id560442729?l=ja&amp;ls=1&amp;mt=8">https://itunes.apple.com/jp/app/mao-xiankuizukingudamu/id560442729?l=ja&amp;ls=1&amp;mt=8</a></li>
+</ul>
+
+
+<h2>Google Play页面</h2>
+
+<ul>
+<li><a href="https://play.google.com/store/apps/details?id=com.kayac.quizkingdom">https://play.google.com/store/apps/details?id=com.kayac.quizkingdom</a></li>
+</ul>
+
+
+<h2>官方网站</h2>
+
+<ul>
+<li><a href="http://quiz-kingdom.kayac.com/">http://quiz-kingdom.kayac.com/</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://onevcat.com/showcase/pomodoro_do/">Pomodoro Do</a></h1>
+
+<p><code>2012年7月25日</code></p>
+
+<p><img class="right" src="http://pomo.onevcat.com/img/Icon-50.png"></p>
+
+<p>Pomodoro Do是我利用硕士毕业后，日语培训前的短暂时间完成的iOS上的番茄工作法计时辅助工具，配合番茄工作法，可以更加专注，减少不必要的时间浪费，从而提高效率。这款应用的创意、设计、编码、推广均有我自己独立完成，收获颇丰。这款应用在没有任何推广费用投入的条件下多次进入中国区效率榜前5名，也帮助了很多用户节约时间，提高效率。自己开发的应用能够真的有用，能够帮助别人，这对我来说莫过于最开心的事情了。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://onevcat.com/2013/04/our-money-app/">http://www.onevcat.com/showcase/pomodoro_do/</a></li>
+</ul>
+
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li><a href="http://itunes.apple.com/cn/app/pomodoro-do/id533469911?ls=1&amp;mt=8">http://itunes.apple.com/cn/app/pomodoro-do/id533469911?ls=1&amp;mt=8</a></li>
+</ul>
+
+
+<h2>官方网站</h2>
+
+<ul>
+<li><a href="http://pomo.onevcat.com/">http://pomo.onevcat.com/</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://www.onevcat.com/showcase/texaspokerking/">扑克王中王</a></h1>
+
+<p><code>2012年6月25日</code></p>
+
+<p><img class="right" src="http://www.onevcat.com/wp-content/uploads/2012/06/Icon@2x.png"></p>
+
+<p>扑克王中王是我在攻读硕士期间在北京锐德无限兼职时开发的iOS平台德州扑克游戏。不论您水平如何，都可以迅速上手，并在游戏中有机会与来自全球的德州玩家同台竞技。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://www.onevcat.com/showcase/texaspokerking/">http://www.onevcat.com/showcase/texaspokerking/</a></li>
+</ul>
+
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li><a href="http://itunes.apple.com/app/pu-ke-wang-zhong-wang/id524930436?mt=8">http://itunes.apple.com/app/pu-ke-wang-zhong-wang/id524930436?mt=8</a></li>
+</ul>
+
+
+<h2>官方网站</h2>
+
+<ul>
+<li><a href="http://www.texaspokerking.net/zh/">http://www.texaspokerking.net/zh/</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://www.onevcat.com/showcase/vvbordertimer/">VVBorderTimer</a></h1>
+
+<p><code>2011年12月24日</code></p>
+
+<p><img class="right" src="http://www.onevcat.com/wp-content/uploads/2011/12/borderlogo-150x150.png"></p>
+
+<p>VVBorderTimer是一个可配置的使用边框作为计时条的UIView.</p>
+
+<p>该视图是在德州扑克项目中我所开发的通用计时视图，现作为BSD开源</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://www.onevcat.com/showcase/vvbordertimer/">http://www.onevcat.com/showcase/vvbordertimer/</a></li>
+</ul>
+
+
+<h2>GitHub页面</h2>
+
+<ul>
+<li><a href="https://github.com/onevcat/VVBorderTimer">https://github.com/onevcat/VVBorderTimer</a></li>
+</ul>
+
+
+<hr />
+
+<h1><a href="http://www.onevcat.com/showcase/coinpush/">小熊推金币（小熊战争-在线竞技）</a></h1>
+
+<p><code>2011年11月12日</code></p>
+
+<p><img class="right" src="http://www.onevcat.com/wp-content/uploads/2011/12/5121-e1324784475826.png"></p>
+
+<p>小熊推金币是我在攻读硕士期间在北京锐德无限兼职时开发的iOS/Android平台的休闲类游戏，模拟并扩展了了街机厅推币机的游戏方式，并加入了诸如联机对战，服饰系统，好友系统等许多有趣的SNS游戏元素。该游戏在AppStore上曾在多个国家取得娱乐榜第一，总排行榜前三的好成绩，全球范围内下载量达到500万左右。</p>
+
+<h2>详细介绍</h2>
+
+<ul>
+<li><a href="http://www.onevcat.com/showcase/coinpush/">http://www.onevcat.com/showcase/coinpush/</a></li>
+</ul>
+
+
+<h2>AppStore页面</h2>
+
+<ul>
+<li>iPhone/iPod Touch原版 <a href="http://itunes.apple.com/app//id429881074?mt=8">http://itunes.apple.com/app//id429881074?mt=8</a></li>
+<li>iPhone/iPod Touch对战版 <a href="http://itunes.apple.com/app/id435378516?mt=8">http://itunes.apple.com/app/id435378516?mt=8</a></li>
+<li>iPad原版 <a href="http://itunes.apple.com/us/app/bear-coin-hd-cooco-bear/id478660705?mt=8">http://itunes.apple.com/us/app/bear-coin-hd-cooco-bear/id478660705?mt=8</a></li>
+</ul>
+
+
+<h2>Google Play页面</h2>
+
+<ul>
+<li><a href="https://play.google.com/store/apps/details?id=com.loverita.allen&amp;feature=search_result#?t=W251bGwsMSwxLDEsImNvbS5sb3Zlcml0YS5hbGxlbiJd">https://play.google.com/store/apps/details?id=com.loverita.allen&amp;feature=search_result#?t=W251bGwsMSwxLDEsImNvbS5sb3Zlcml0YS5hbGxlbiJd</a></li>
+<li><a href="http://as.baidu.com/a/item?docid=74538&amp;f=web_alad_1">http://as.baidu.com/a/item?docid=74538&amp;f=web_alad_1</a></li>
+</ul>
+
+</div>
+</article>
+
+	<div class="share">
+	如果您觉得这篇文章对您有帮助，请不吝分享让更多人知道 :)
+	<span class='st_sina_large' displayText='Sina'></span>
+	<span class='st_facebook_large' displayText='Facebook'></span>
+	<span class='st_twitter_large' displayText='Tweet'></span>
+	<span class='st_email_large' displayText='Email'></span>
+	<span class='st_sharethis_large' displayText='ShareThis'></span>
+</div>
+
+
+
+<section id="comment">
+    <h1 class="title">Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+	<a rel="license" href="http://creativecommons.org/licenses/by-nc/3.0/deed.zh"><img alt="知识共享许可协议" style="border-width:0" src="http://i.creativecommons.org/l/by-nc/3.0/80x15.png" /></a>本站点采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/3.0/deed.zh">知识共享署名-非商业性使用 3.0 国际版本许可协议</a>进行许可
+</p>
+<p>
+  2014 - <a href="http://about.me/onevcat">@onevcat</a>  
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>  <span class="credit"> 感谢<a href="https://www.digitalocean.com/?refcode=30ed2d146762">Digital Ocean</a>为本站提供稳定的VPS服务</span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'onevcat';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://onevcat.com/showcase/index.html';
+        var disqus_url = 'http://onevcat.com/showcase/index.html';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-25719337-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

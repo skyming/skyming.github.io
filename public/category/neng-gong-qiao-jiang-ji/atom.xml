@@ -1,0 +1,1719 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 能工巧匠集 | OneV's Den]]></title>
+  <link href="http://onevcat.com/category/neng-gong-qiao-jiang-ji/atom.xml" rel="self"/>
+  <link href="http://onevcat.com/"/>
+  <updated>2014-05-04T12:24:24+09:00</updated>
+  <id>http://onevcat.com/</id>
+  <author>
+    <name><![CDATA[onevcat]]></name>
+    <email><![CDATA[onev@onevcat.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[常见的后台实践]]></title>
+    <link href="http://onevcat.com/2014/03/common-background-practices/"/>
+    <updated>2014-03-22T23:56:00+09:00</updated>
+    <id>http://onevcat.com/2014/03/common-background-practices</id>
+    <content type="html"><![CDATA[<p><img src="http://img.onevcat.com/2014/multi-threading.jpg" alt="multi-threading" /></p>
+
+<h2>题外</h2>
+
+<p><a href="http://www.objc.io">objc.io</a> 是一个非常棒的iOS进阶学习的网站，上面有很多超赞的学习资源和例子。最近我和 <a href="http://weibo.com/fangyixiong">@方一雄</a>，<a href="http://weibo.com/u/1623064627">@answer-huang</a> 和社区的另外几名小伙伴在主持做一个 objc.io 的译文整理汇总和后续翻译跟进的项目，我暂时略自我狂妄地把它叫做 <code>objc中国</code>（<a href="http://objccn.io">objccn.io</a>） 项目，希望它能给现在已经很红火的中国objc社区锦上添花。现在上面已经有一些文章，您可以时不时地访问我们的<a href="http://objccn.io">首页</a>来查看新的动态。如果有兴趣，也可以考虑<a href="https://github.com/objccn/articles">加入我们</a>，来为中国objc社区的发展贡献一点力量。</p>
+
+<p>对objc中国上的每一篇文章，我都会至少进行一个基本的校对。在整理和收集的过程中，我发现虽然不少文章有相对完整的译文，但其中也存在对原文的理解上有一定偏差的情况。可能是译者并没有原作者对某些问题的深入理解，可能是原文也做过一些修改调整而译文没有更新，也可能是因为翻译时时间上多有仓促，导致了它们并不足以在只是稍加修改后就能发表在主站点上。对于这样的译文，我的想法是为了保证文章质量，牺牲一些个人时间来重新进行翻译。一来可以保证文章质量和站点的水准，二来也算是一次自我学习和提高的过程。</p>
+
+<p>题外话完毕。本文是 objc.io issue #2 的第二篇正文，这篇文章在该主题第一篇<a href="http://objccn.io/issue-2-1/">并发编程：API 及挑战</a>的基础上深层次地讲了一些实践上的例子和技术，颇有难度。对多线程不熟悉的同学可以先参照看看第一篇，再来阅读本文。</p>
+
+<!--more-->
+
+
+<p>本文主要探讨一些常用后台任务的最佳实践。我们将会看看如何并发地使用 Core Data ，如何并行绘制 UI ，如何做异步网络请求等。最后我们将研究如何异步处理大型文件，以保持较低的内存占用。  因为在异步编程中非常容易犯错误，所以，本文中的例子都将使用很简单的方式。因为使用简单的结构可以帮助我们看透代码，抓住问题本质。如果你最后把代码写成了复杂的嵌套回调的话，那么你很可能应该重新考虑自己当初的设计选择了。</p>
+
+<h2>操作队列 (Operation Queues) 还是 GCD ?</h2>
+
+<p>目前在 iOS 和 OS X 中有两套先进的同步 API 可供我们使用：<a href="http://developer.apple.com/library/ios/#documentation/Cocoa/Reference/NSOperationQueue_class/Reference/Reference.html">操作队列</a>和 <a href="https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html">GCD</a> 。其中 GCD 是基于 C 的底层的 API ，而操作队列则是 GCD 实现的 Objective-C API。关于我们可以使用的并行 API 的更加全面的总览，可以参见 <a href="http://www.objc.io/issue-2-1/">并发编程：API 及挑战</a>。</p>
+
+<p>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务，在稍后的例子中我们会看到这个。而且操作队列在管理操作间的依赖关系方面也容易一些。另一面，GCD 给予你更多的控制权力以及操作队列中所不能使用的底层函数。详细介绍可以参考<a href="http://www.objc.io/issue-2-3/">底层并发 API</a> 这篇文章。</p>
+
+<p>扩展阅读：</p>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a></li>
+<li><a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
+</ul>
+
+
+<h3>后台的 Core Data</h3>
+
+<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/mac/#documentation/cocoa/conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data guide</a> 。这个文档中罗列了基本规则，比如绝对不要在线程间传递 managed objects等。这并不单是说你绝不应该在另一个线程中去更改某个其他线程的 managed object ，甚至是读取其中的属性都是不能做的。要想传递这样的对象，正确做法是通过传递它的 object ID ，然后从其他对应线程所绑定的 context 中去获取这个对象。</p>
+
+<p>其实只要你遵循那些规则，并使用这篇文章里所描述的方法的话，处理 Core Data 的并行编程还是比较容易的。</p>
+
+<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难滴完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
+
+<p>我们的方式非常简单，并且可以被很好地描述：</p>
+
+<ol>
+<li>我们为导入工作单独创建一个操作</li>
+<li>我们创建一个 managed object context ，它和主 managed object context 使用同样的 persistent store coordinator</li>
+<li>一旦导入 context 保存了，我们就通知 主 managed object context 并且合并这些改变</li>
+</ol>
+
+
+<p>在<a href="https://github.com/objcio/issue-2-background-core-data">示例app</a>中，我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。示例用到的数据是采用的 Creative Commons license 公开的，你可以<a href="http://stg.daten.berlin.de/datensaetze/vbb-fahrplan-2013">在此下载</a>它们。这些数据遵守一个叫做 <a href="https://developers.google.com/transit/gtfs/reference">General Transit Feed</a> 格式的交通数据公开标准。</p>
+
+<p>我们创建一个 <code>NSOperation</code> 的子类，将其叫做 <code>ImportOperation</code>，我们通过重写 <code>main</code> 方法，用来处理所有的导入工作。这里我们使用 <code>NSPrivateQueueConcurrencyType</code> 来创建一个独立并拥有自己的私有 dispatch queue 的 managed object context，这个 context 需要管理自己的队列。在队列中的所有操作必须使用 <code>performBlock</code> 或者 <code>performBlockAndWait</code> 来进行触发。这点对于保证这些操作能在正确的线程上执行是相当重要的。</p>
+
+<p>```objc
+NSManagedObjectContext* context = [[NSManagedObjectContext alloc]</p>
+
+<pre><code>                                 initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+</code></pre>
+
+<p>context.persistentStoreCoordinator = self.persistentStoreCoordinator;
+context.undoManager = nil;
+[self.context performBlockAndWait:^
+{</p>
+
+<pre><code>[self import];
+</code></pre>
+
+<p>}];
+```</p>
+
+<p>在这里我们重用了已经存在的 persistent store coordinator 。一般来说，初始化 managed object contexts 要么使用 <code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。第三种并发类型 <code>NSConfinementConcurrencyType</code> 是为老旧代码准备的，我们不建议再使用它了。</p>
+
+<p>在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：</p>
+
+<p>```objc
+[lines enumerateObjectsUsingBlock:
+  ^(NSString<em> line, NSUInteger idx, BOOL</em> shouldStop)
+  {</p>
+
+<pre><code>  NSArray* components = [line csvComponents];
+  if(components.count &amp;lt; 5) {
+      NSLog(@"couldn't parse: %@", components);
+      return;
+  }
+  [Stop importCSVComponents:components intoContext:context];
+</code></pre>
+
+<p>  }];
+```</p>
+
+<p>在 view controller 中通过以下代码来开始操作：</p>
+
+<p>```objc
+ImportOperation* operation = [[ImportOperation alloc]</p>
+
+<pre><code> initWithStore:self.store fileName:fileName];
+</code></pre>
+
+<p>[self.operationQueue addOperation:operation];
+```</p>
+
+<p>至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：</p>
+
+<p>```objc
+if(self.isCancelled) {</p>
+
+<pre><code>*shouldStop = YES;
+return;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>最后为了支持进度条，我们在 operation 中创建一个叫做 <code>progressCallback</code> 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。</p>
+
+<p>```objc
+operation.progressCallback = ^(float progress)
+{</p>
+
+<pre><code>[[NSOperationQueue mainQueue] addOperationWithBlock:^
+{
+    self.progressIndicator.progress = progress;
+}];
+</code></pre>
+
+<p>};
+```</p>
+
+<p>我们在枚举中来调用这个进度条更新的 block 的操作：</p>
+
+<p><code>objc
+self.progressCallback(idx / (float) count);
+</code></p>
+
+<p>然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：</p>
+
+<p>```objc
+NSInteger progressGranularity = lines.count / 100;</p>
+
+<p>if (idx % progressGranularity == 0) {</p>
+
+<pre><code>self.progressCallback(idx / (float) count);
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>更新 Main Context</h3>
+
+<p>在 app 中的 table view 是由一个在主线程上获取了结果的 controller 所驱动的。在导入数据的过程中和导入数据完成后，我们要在 table view 中展示我们的结果。</p>
+
+<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context中，除非我们显式地让它这么去做。我们在 <code>Store</code> 类的设置 Core Data stack 的 <code>init</code> 方法中加入下面的代码：</p>
+
+<p>```objc
+[[NSNotificationCenter defaultCenter]</p>
+
+<pre><code>addObserverForName:NSManagedObjectContextDidSaveNotification
+            object:nil
+             queue:nil
+        usingBlock:^(NSNotification* note)
+</code></pre>
+
+<p>{</p>
+
+<pre><code>NSManagedObjectContext *moc = self.mainManagedObjectContext;
+if (note.object != moc)
+    [moc performBlock:^(){
+        [moc mergeChangesFromContextDidSaveNotification:note];
+    }];
+}];
+</code></pre>
+
+<p>}];
+```</p>
+
+<p>如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。</p>
+
+<p>要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。</p>
+
+<p>合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。</p>
+
+<h3>其他考虑</h3>
+
+<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 <a href="http://stackoverflow.com/questions/3707427/how-to-read-data-from-nsfilehandle-line-by-line/3711079#3711079">StackOverflow</a> 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
+
+<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理事件。</p>
+
+<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将<a href="http://floriankugler.com/blog/2013/4/29/concurrent-core-data-stack-performance-shootout">阻塞主线程</a>。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
+
+<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
+
+<p>扩展阅读：</p>
+
+<ul>
+<li><a href="http://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/CoreData/Articles/cdImporting.html">Core Data Programming Guide: Efficiently importing data</a></li>
+<li><a href="http://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html#//apple_ref/doc/uid/TP40003385-SW1j">Core Data Programming Guide: Concurrency with Core Data</a></li>
+<li><a href="http://stackoverflow.com/questions/2138252/core-data-multi-thread-application/2138332#2138332">StackOverflow: Rules for working with Core Data</a></li>
+<li><a href="https://developer.apple.com/videos/wwdc/2012/?id=214">WWDC 2012 Video: Core Data Best Practices</a></li>
+<li><a href="http://pragprog.com/book/mzcd/core-data">Book: Core Data by Marcus Zarra</a></li>
+</ul>
+
+
+<h2>后台 UI 代码</h2>
+
+<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
+
+<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
+
+<p>```objc
+__weak id weakSelf = self;
+[self.operationQueue addOperationWithBlock:<sup>{</sup></p>
+
+<pre><code>NSNumber* result = findLargestMersennePrime();
+[[NSOperationQueue mainQueue] addOperationWithBlock:^{
+    MyClass* strongSelf = weakSelf;
+    strongSelf.textLabel.text = [result stringValue];
+}];
+</code></pre>
+
+<p>}];
+```</p>
+
+<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 <code>operationQueue</code> retain 了 block，而 self 又 retain 了 <code>operationQueue</code> ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
+
+<blockquote><p><p><span class="secondary radius label">编者注</span> 这在 ARC 和 block 主导的编程范式中是解决 retain cycle 的一种常见也是最标准的方法。</p></blockquote>
+
+<h3>后台绘制</h3>
+
+<p>如果你确定 <code>drawRect:</code> 是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用 core animation layers 或者预先渲染图片而不去做 Core Graphics 绘制。可以看看 Florian 对在真机上图像性能测量的<a href="http://floriankugler.com/blog/2013/5/24/layer-trees-vs-flat-drawing-graphics-performance-across-ios-device-generations">帖子</a>，或者可以看看来自 UIKit 工程师 Andy Matuschak 对个各种方式的权衡的<a href="https://lobste.rs/s/ckm4uw/a_performance-minded_take_on_ios_design/comments/itdkfh">评论</a>。</p>
+
+<p>如果你确实认为在后台执行绘制代码会是你的最好选择时再这么做。其实解决起来也很简单，把 <code>drawRect:</code> 中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code> 来取代 <code>UIGraphicsBeginImageContextWithOpertions</code> ：</p>
+
+<p><code>objc
+UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+// drawing code here
+UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
+UIGraphicsEndImageContext();
+return i;
+</code></p>
+
+<p>通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和 retina 屏幕上都有良好的表现。</p>
+
+<p>如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将塔门放入 operation 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的WWDC <a href="https://developer.apple.com/videos/wwdc/2012/">Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
+
+<p>除了在后台自己调度绘制代码，以也可以试试看使用 <code>CALayer</code> 的 <code>drawsAsynchronously</code> 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
+
+<h2>异步网络请求处理</h2>
+
+<p>你的所有网络请求都应该采取异步的方式完成。</p>
+
+<p>然而，在 GCD 下，有时候你可能会看到这样的代码</p>
+
+<p>```objc
+// 警告：不要使用这些代码。
+dispatch_async(backgroundQueue, ^{
+   NSData* contents = [NSData dataWithContentsOfURL:url]
+   dispatch_async(dispatch_get_main_queue(), ^{</p>
+
+<pre><code>  // 处理取到的日期
+</code></pre>
+
+<p>   });
+});
+```</p>
+
+<p>乍看起来没什么问题，但是这段代码却有致命缺陷。你没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时（比如 <code>dataWithContentsOfURL:</code> 的超时时间是 30 秒）。</p>
+
+<p>如果队列是串行执行的话，它将一直被阻塞住。假如队列是并行执行的话，GCD 需要重开一个线程来补凑你阻塞住的线程。两种结果都不太妙，所以最好还是不要阻塞线程。</p>
+
+<p>要解决上面的困境，我们可以使用 <code>NSURLConnection</code> 的异步方法，并且把所有操作转化为 operation 来执行。通过这种方法，我们可以从操作队列的强大功能和便利中获益良多：我们能轻易地控制并发操作的数量，添加依赖，以及取消操作。</p>
+
+<p>然而，在这里还有一些事情值得注意： <code>NSURLConnection</code> 是通过 run loop 来发送事件的。因为时间发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。</p>
+
+<p>另一种可能的方式是使用像 <a href="http://afnetworking.com">AFNetworking</a> 这样的框架：建立一个独立的线程，为建立的线程设置自己的 run loop，然后在其中调度 URL 连接。但是并不推荐你自己去实现这些事情。</p>
+
+<p>要处理URL 连接，我们重写自定义的 operation 子类中的 <code>start</code> 方法：</p>
+
+<p>```objc
+- (void)start
+{</p>
+
+<pre><code>NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
+self.isExecuting = YES;
+self.isFinished = NO;
+[[NSOperationQueue mainQueue] addOperationWithBlock:^
+{
+    self.connection = [NSURLConnectionconnectionWithRequest:request
+                                                   delegate:self];
+}];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>由于重写的是 <code>start</code> 方法，所以我们需要自己要管理操作的 <code>isExecuting</code> 和 <code>isFinished</code> 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
+
+<p>```objc
+- (void)cancel
+{</p>
+
+<pre><code>[super cancel];
+[self.connection cancel];
+self.isFinished = YES;
+self.isExecuting = NO;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>当连接完成加载后，它向代理发送回调：</p>
+
+<p>```objc
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+{</p>
+
+<pre><code>self.data = self.buffer;
+self.buffer = nil;
+self.isExecuting = NO;
+self.isFinished = YES;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>就这么多了。完整的代码可以参见<a href="https://github.com/objcio/issue-2-background-networking">GitHub上的示例工程</a>。</p>
+
+<p>总结来说，我们建议要么你玩时间来把事情做对做好，要么就直接使用像 <a href="http://afnetworking.com/">AFNetworking</a> 这样的框架。其实 <a href="http://afnetworking.com/">AFNetworking</a> 还提供了不少好用的小工具，比如有个 <code>UIImageView</code> 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
+
+<p>扩展阅读：</p>
+
+<ul>
+<li><a href="http://developer.apple.com/library/ios/#documentation/General/Conceptual/ConcurrencyProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008091-CH1-SW1">Concurrency Programming Guide</a></li>
+<li><a href="http://developer.apple.com/library/ios/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html%23http://developer.apple.com/library/ios/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html%23//apple_ref/doc/uid/TP40004591-RH2-SW15">NSOperation Class Reference: Concurrent vs. Non-Concurrent Operations</a></li>
+<li><a href="http://www.cocoaintheshell.com/2011/04/nsurlconnection-synchronous-asynchronous/">Blog: synchronous vs. asynchronous NSURLConnection</a></li>
+<li><a href="https://github.com/rs/SDWebImage/blob/master/SDWebImage/SDWebImageDownloaderOperation.m">GitHub: <code>SDWebImageDownloaderOperation.m</code></a></li>
+<li><a href="http://www.cocoaintheshell.com/2011/05/progressive-images-download-imageio/">Blog: Progressive image download with ImageIO</a></li>
+<li><a href="https://developer.apple.com/videos/wwdc/2012/">WWDC 2012 Session 211: Building Concurrent User Interfaces on iOS</a></li>
+</ul>
+
+
+<h2>进阶：后台文件 I/O</h2>
+
+<p>在之前我们的后台 Core Data 示例中，我们将一整个文件加载到了内存中。这种方式对于较小的文件没有问题，但是受限于 iOS 设备的内存容量，对于大文件来说的话就不那么友好了。要解决这个问题，我们将构建一个类，它负责一行一行读取文件而不是一次将整个文件读入内存，另外要在后台队列处理文件，以保持应用相应用户的操作。</p>
+
+<p>为了达到这个目的，我们使用能让我们异步处理文件的 <code>NSInputStream</code> 。根据<a href="http://developer.apple.com/library/ios/#documentation/FileManagement/Conceptual/FileSystemProgrammingGUide/TechniquesforReadingandWritingCustomFiles/TechniquesforReadingandWritingCustomFiles.html">官方文档</a>的描述：</p>
+
+<blockquote><p>如果你需总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p></blockquote>
+
+<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
+
+<ol>
+<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
+<li>从 stream 中读取一块数据</li>
+<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
+<li>将剩余的字节添加到中间缓冲层去</li>
+<li>回到 2，直到 stream 关闭</li>
+</ol>
+
+
+<p>为了将其运用到实践中，我们又建立了一个<a href="https://github.com/objcio/issue-2-background-file-io">示例应用</a>，里面有一个 <code>Reader</code> 类完成了这件事情，它的接口十分简单</p>
+
+<p>```objc
+@interface Reader : NSObject
+- (void)enumerateLines:(void (<sup>)(NSString*))block</sup></p>
+
+<pre><code>        completion:(void (^)())completion;
+</code></pre>
+
+<ul>
+<li>(id)initWithFileAtPath:(NSString*)path;
+@end
+```</li>
+</ul>
+
+
+<p>注意，这个类不是 NSOperation 的子类。与 URL connections 类似，输入的 streams 通过 run loop 来传递它的事件。这里，我们仍然采用 main run loop 来分发事件，然后将数据处理过程派发至后台操作线程里去处理。</p>
+
+<p>```objc
+- (void)enumerateLines:(void (<sup>)(NSString*))block</sup></p>
+
+<pre><code>        completion:(void (^)())completion
+</code></pre>
+
+<p>{</p>
+
+<pre><code>if (self.queue == nil) {
+    self.queue = [[NSOperationQueue alloc] init];
+    self.queue.maxConcurrentOperationCount = 1;
+}
+self.callback = block;
+self.completion = completion;
+self.inputStream = [NSInputStream inputStreamWithURL:self.fileURL];
+self.inputStream.delegate = self;
+[self.inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop]
+                            forMode:NSDefaultRunLoopMode];
+[self.inputStream open];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>现在，input stream 将（在主线程）向我们发送代理消息，然后我们可以在操作队列中加入一个 block 操作来执行处理了：</p>
+
+<p>```objc
+- (void)stream:(NSStream*)stream handleEvent:(NSStreamEvent)eventCode
+{</p>
+
+<pre><code>switch (eventCode) {
+    ...
+    case NSStreamEventHasBytesAvailable: {
+        NSMutableData *buffer = [NSMutableData dataWithLength:4 * 1024];
+        NSUInteger length = [self.inputStream read:[buffer mutableBytes]
+                                         maxLength:[buffer length]];
+        if (0 &amp;lt; length) {
+            [buffer setLength:length];
+            __weak id weakSelf = self;
+            [self.queue addOperationWithBlock:^{
+                [weakSelf processDataChunk:buffer];
+            }];
+        }
+        break;
+    }
+    ...
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>处理数据块的过程是先查看当前已缓冲的数据，并将新加入的数据附加上去。接下来它将按照换行符分解成小的部分，并处理每一行。</p>
+
+<p>数据处理过程中会不断的从buffer中获取已读入的数据。然后把这些新读入的数据按行分开并存储。剩余的数据被再次存储到缓冲区中：</p>
+
+<p>```objc
+- (void)processDataChunk:(NSMutableData *)buffer;
+{</p>
+
+<pre><code>if (self.remainder != nil) {
+    [self.remainder appendData:buffer];
+} else {
+    self.remainder = buffer;
+}
+[self.remainder obj_enumerateComponentsSeparatedBy:self.delimiter
+                                        usingBlock:^(NSData* component, BOOL last) {
+    if (!last) {
+        [self emitLineWithData:component];
+    } else if (0 &amp;lt; [component length]) {
+        self.remainder = [component mutableCopy];
+    } else {
+        self.remainder = nil;
+    }
+}];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>现在你运行示例应用的话，会发现它在响应事件时非常迅速，内存的开销也保持很低（在我们测试时，不论读入的文件有多大，堆所占用的内存量始终低于 800KB）。绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</p>
+
+<p>延伸阅读：</p>
+
+<ul>
+<li><a href="http://developer.apple.com/library/ios/#documentation/FileManagement/Conceptual/FileSystemProgrammingGUide/TechniquesforReadingandWritingCustomFiles/TechniquesforReadingandWritingCustomFiles.html">File System Programming Guide: Techniques for Reading and Writing Files Without File Coordinators</a></li>
+<li><a href="http://stackoverflow.com/questions/3707427/how-to-read-data-from-nsfilehandle-line-by-line">StackOverflow: How to read data from NSFileHandle line by line?</a></li>
+</ul>
+
+
+<h2>总结</h2>
+
+<p>通过我们所列举的几个示例，我们展示了如何异步地在后台执行一些常见任务。在所有的解决方案中，我们尽力保持了代码的简单，这是因为在并发编程中，稍不留神就会捅出篓子来。</p>
+
+<p>很多时候为了避免麻烦，你可能更愿意在主线程中完成你的工作，在你能这么做事，这确实让你的工作轻松不少，但是当你发现性能瓶颈时，你可以尝试尽可能用最简单的策略将那些繁重任务放到后台去做。</p>
+
+<p>我们在上面例子中所展示的方法对于其他任务来说也是安全的选择。在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</p>
+
+<hr />
+
+<p><a href="https://github.com/objcio/issue-2-background-core-data">话题 #2 下的更多文章</a></p>
+
+<p>原文 <a href="http://www.objc.io/issue-2/common-background-practices.html">Common Background Practices</a></p>
+
+<p>译文 <a href="http://blog.jobbole.com/52557/">iOS开发中一些常见的并行处理</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[TDD的iOS开发初步以及Kiwi使用入门]]></title>
+    <link href="http://onevcat.com/2014/02/ios-test-with-kiwi/"/>
+    <updated>2014-02-17T10:12:00+09:00</updated>
+    <id>http://onevcat.com/2014/02/ios-test-with-kiwi</id>
+    <content type="html"><![CDATA[<p><img src="http://img.onevcat.com/2014/kiwi-title.jpg" alt="Kiwi" /></p>
+
+<p>测试驱动开发(Test Driven Development，以下简称TDD)是保证代码质量的不二法则，也是先进程序开发的共识。Apple一直致力于在iOS开发中集成更加方便和可用的测试，在Xcode 5中，新的IDE和SDK引入了XCTest来替代原来的SenTestingKit，并且取消了新建工程时的“包括单元测试”的可选项（同样待遇的还有使用ARC的可选项）。新工程将自动包含测试的target，并且相关框架也搭建完毕，可以说测试终于摆脱了iOS开发中“二等公民”的地位，现在已经变得和产品代码一样重要了。我相信每个工程师在完成自己的业务代码的同时，也有最基本的编写和维护相应的测试代码的义务，以保证自己的代码能够正确运行。更进一步，如果能够使用TDD来进行开发，不仅能保证代码运行的正确性，也有助于代码结构的安排和思考，有助于自身的不断提高。我在最开始进行开发时也曾对测试嗤之以鼻，但后来无数的惨痛教训让我明白那么多工程师痴迷于测试或者追求更完美的测试，是有其深刻含义的。如果您之前还没有开始为您的代码编写测试，我强烈建议，从今天开始，从现在开始（也许做不到的话，也请从下一个项目开始），编写测试，或者尝试一下TDD的开发方式。</p>
+
+<p>而<a href="https://github.com/allending/Kiwi">Kiwi</a>是一个iOS平台十分好用的行为驱动开发(Behavior Driven Development，以下简称BDD)的测试框架，有着非常漂亮的语法，可以写出结构性强，非常容易读懂的测试。因为国内现在有关Kiwi的介绍比较少，加上在测试这块很能很多工程师们并没有特别留意，水平层次可能相差会很远，因此在这一系列的两篇博文中，我将从头开始先简单地介绍一些TDD的概念和思想，然后从XCTest的最简单的例子开始，过渡到Kiwi的测试世界。在下一篇中我将继续深入介绍一些Kiwi的其他稍高一些的特性，以期更多的开发者能够接触并使用Kiwi这个优秀的测试框架。</p>
+
+<h3>什么是TDD，为什么我们要TDD</h3>
+
+<p>测试驱动开发并不是一个很新鲜的概念了。软件开发工程师们（当然包括你我）最开始学习程序编写时，最喜欢干的事情就是编写一段代码，然后运行观察结果是否正确。如果不对就返回代码检查错误，或者是加入断点或者输出跟踪程序并找出错误，然后再次运行查看输出是否与预想一致。如果输出只是控制台的一个简单的数字或者字符那还好，但是如果输出必须在点击一系列按钮之后才能在屏幕上显示出来的东西呢？难道我们就只能一次一次地等待编译部署，启动程序然后操作UI，一直点到我们需要观察的地方么？这种行为无疑是对美好生命和绚丽青春的巨大浪费。于是有一些已经浪费了无数时间的资深工程师们突然发现，原来我们可以在代码中构建出一个类似的场景，然后在代码中调用我们之前想检查的代码，并将运行的结果与我们的设想结果在程序中进行比较，如果一致，则说明了我们的代码没有问题，是按照预期工作的。比如我们想要实现一个加法函数add，输入两个数字，输出它们相加后的结果。那么我们不妨设想我们真的拥有两个数，比如3和5，根据人人会的十以内的加法知识，我们知道答案是8.于是我们在相加后与预测的8进行比较，如果相等，则说明我们的函数实现至少对于这个例子是没有问题的，因此我们对“这个方法能正确工作”这一命题的信心就增加了。这个例子的伪码如下：</p>
+
+<!--more-->
+
+
+<p>```c
+//Product Code
+add(float num1, float num 2) {...}</p>
+
+<p>//Test code
+let a = 3;
+let b = 5;
+let c = a + b;</p>
+
+<p>if (c == 8) {</p>
+
+<pre><code>// Yeah, it works!
+</code></pre>
+
+<p>} else {</p>
+
+<pre><code>//Something wrong!
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>当测试足够全面和具有代表性的时候，我们便可以信心爆棚，拍着胸脯说，这段代码没问题。我们做出某些条件和假设，并以其为条件使用到被测试代码中，并比较预期的结果和实际运行的结果是否相等，这就是软件开发中测试的基本方式。</p>
+
+<p><img src="http://img.onevcat.com/2014/kiwi-manga.png" alt="为什么我们要test" /></p>
+
+<p>而TDD是一种相对于普通思维的方式来说，比较极端的一种做法。我们一般能想到的是先编写业务代码，也就是上面例子中的<code>add</code>方法，然后为其编写测试代码，用来验证产品方法是不是按照设计工作。而TDD的思想正好与之相反，在TDD的世界中，我们应该首先根据需求或者接口情况编写测试，然后再根据测试来编写业务代码，而这其实是违反传统软件开发中的先验认知的。但是我们可以举一个生活中类似的例子来说明TDD的必要性：有经验的砌砖师傅总是会先拉一条垂线，然后沿着线砌砖，因为有直线的保证，因此可以做到笔直整齐；而新入行的师傅往往二话不说直接开工，然后在一阶段完成后再用直尺垂线之类的工具进行测量和修补。TDD的好处不言自明，因为总是先测试，再编码，所以至少你的所有代码的public部分都应该含有必要的测试。另外，因为测试代码实际是要使用产品代码的，因此在编写产品代码前你将有一次深入思考和实践如何使用这些代码的机会，这对提高设计和可扩展性有很好的帮助，试想一下你测试都很难写的接口，别人（或者自己）用起来得多纠结。在测试的准绳下，你可以有目的有方向地编码；另外，因为有测试的保护，你可以放心对原有代码进行重构，而不必担心破坏逻辑。这些其实都指向了一个最终的目的：让我们快乐安心高效地工作。</p>
+
+<p>在TDD原则的指导下，我们先编写测试代码。这时因为还没有对应的产品代码，所以测试代码肯定是无法通过的。在大多数测试系统中，我们使用红色来表示错误，因此一个测试的初始状态应该是红色的。接下来我们需要使用最小的代价（最少的代码）来让测试通过。通过的测试将被表示为安全的绿色，于是我们回到了绿色的状态。接下来我们可以添加一些测试例，来验证我们的产品代码的实现是否正确。如果不幸新的测试例让我们回到了红色状态，那我们就可以修改产品代码，使其回到绿色。如此反复直到各种边界和测试都进行完毕，此时我们便可以得到一个具有测试保证，鲁棒性超强的产品代码。在我们之后的开发中，因为你有这些测试的保证，你可以大胆重构这段代码或者与之相关的代码，最后只需要保证项目处于绿灯状态，你就可以保证代码没重构没有出现问题。</p>
+
+<p>简单说来，TDD的基本步骤就是“红→绿→大胆重构”。</p>
+
+<h3>使用XCTest来执行TDD</h3>
+
+<p>Xcode 5中已经集成了XCTest的测试框架（之前版本是SenTestingKit和OCUnit），所谓测试框架，就是一组让“将测试集成到工程中”以及“编写和实践测试”变得简单的库。我们之后将通过实现一个栈数据结构的例子，来用XCTest初步实践一下TDD开发。在大家对TDD有一些直观认识之后，再转到Kiwi的介绍。如果您已经在使用XCTest或者其他的测试框架了的话，可以直接跳过本节。</p>
+
+<p>首先我们用Xcode新建一个工程吧，选择模板为空项目，在<code>Product Name</code>中输入工程名字VVStack，当然您可以使用自己喜欢的名字。如果您使用过Xcode之前的版本的话，应该有留意到之前在这个界面是可以选择是否使用Unit Test的，但是现在这个选框已经被取消。</p>
+
+<p><img src="http://img.onevcat.com/2014/kiwi-1-1.png" alt="新建工程" /></p>
+
+<p>新建工程后，可以发现在工程中默认已经有一个叫做<code>VVStackTests</code>的target了，这就是我们测试时使用的target。测试部分的代码默认放到了{ProjectName}Tests的group中，现在这个group下有一个测试文件VVStackTests.m。我们的测试例不需要向别的类暴露接口，因此不需要.h文件。另外一般XCTest的测试文件都会以Tests来做文件名结尾。</p>
+
+<p><img src="http://img.onevcat.com/2014/kiwi-1-2.png" alt="Test文件和target" /></p>
+
+<p>运行测试的快捷键是<code>⌘U</code>（或者可以使用菜单的Product→Test），我们这时候直接对这个空工程进行测试，Xcode在编译项目后会使用你选择的设备或者模拟器运行测试代码。不出意外的话，这次测试将会失败，如图：</p>
+
+<p><img src="http://img.onevcat.com/2014/kiwi-1-3.png" alt="失败的初始测试" /></p>
+
+<p><code>VVStackTests.m</code>是Xcode在新建工程时自动为我们添加的测试文件。因为这个文件并不长，所以我们可以将其内容全部抄录如下：</p>
+
+<p>```objc</p>
+
+<h1>import &lt;XCTest/XCTest.h></h1>
+
+<p>@interface VVStackTests : XCTestCase</p>
+
+<p>@end</p>
+
+<p>@implementation VVStackTests</p>
+
+<ul>
+<li><p>(void)setUp
+{
+  [super setUp];
+  // Put setup code here. This method is called before the invocation of each test method in the class.
+}</p></li>
+<li><p>(void)tearDown
+{
+  // Put teardown code here. This method is called after the invocation of each test method in the class.
+  [super tearDown];
+}</p></li>
+<li><p>(void)testExample
+{
+  XCTFail(@"No implementation for \"%s\"", <strong>PRETTY_FUNCTION</strong>);
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>可以看到，<code>VVStackTests</code>是<code>XCTestCase</code>的子类，而<code>XCTestCase</code>正是XCTest测试框架中的测试用例类。XCTest在进行测试时将会寻找测试target中的所有<code>XCTestCase</code>子类，并运行其中以<code>test</code>开头的所有实例方法。在这里，默认实现的<code>-testExample</code>将被执行，而在这个方法里，Xcode默认写了一个<code>XCTFail</code>的断言，来强制这个测试失败，用以提醒我们测试还没有实现。所谓断言，就是判断输入的条件是否满足。如果不满足，则抛出错误并输出预先规定的字符串作为提示。在这个Fail的断言一定会失败，并提示没有实现该测试。另外，默认还有两个方法<code>-setUp</code>和<code>-tearDown</code>，正如它们的注释里所述，这两个方法会分别在每个测试开始和结束的时候被调用。我们现在正要开始编写我们的测试，所以先将原来的<code>-testExample</code>删除掉。现在再使用<code>⌘U</code>来进行测试，应该可以顺利通过了（因为我们已经没有任何测试了）。</p>
+
+<p>接下来让我们想想要做什么吧。我们要实现一个简单的栈数据结构，那么当然会有一个类来代表这种数据结构，在这个工程中我打算就叫它<code>VVStack</code>。按照常规，我们可以新建一个Cocoa Touch类，继承NSObject并且开始实现了。但是别忘了，我们现在在TDD，我们需要先写测试！那么首先测试的目标是什么呢？没错，是测试这个<code>VVStack</code>类是否存在，以及是否能够初始化。有了这个目标，我们就可以动手开始编写测试了。在文件开头加上<code>#import "VVStack.h"</code>，然后在<code>VVStackTests.m</code>的<code>@end</code>前面加上如下代码：</p>
+
+<p>```objc
+- (void)testStackExist {</p>
+
+<pre><code>XCTAssertNotNil([VVStack class], @"VVStack class should exist.");
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)testStackObjectCanBeCreated {
+  VVStack *stack = [VVStack new];
+  XCTAssertNotNil(stack, @"VVStack object can be created.");
+}
+```</li>
+</ul>
+
+
+<p>嘛，当然是不可能通过测试的，而且甚至连编译都无法完成，因为我们现在根本没有一个叫做<code>VVStack</code>的类。最简单的让测试通过的方法就是在产品代码中添加<code>VVStack</code>类。新建一个Cocoa Touch的Objective-C class，取名VVStack，作为NSObject的子类。注意在添加的时候，应该只将其加入产品的target中：</p>
+
+<p><img src="http://img.onevcat.com/2014/kiwi-1-4.png" alt="添加类的时候注意选择合适的target" /></p>
+
+<p>由于<code>VVStack</code>是NSObject的子类，所以上面的两个断言应该都能通过。这时候再运行测试，成功变绿。接下来我们开始考虑这个类的功能：栈的话肯定需要能够push，并且push后的栈顶元素应该就是刚才所push进去的元素。那么建立一个push方法的测试吧，在刚才添加的代码之下继续写：</p>
+
+<p>```objc
+- (void)testPushANumberAndGetIt {</p>
+
+<pre><code>VVStack *stack = [VVStack new];
+[stack push:2.3];
+double topNumber = [stack top];
+XCTAssertEqual(topNumber, 2.3, @"VVStack should can be pushed and has that top value.");
+</code></pre>
+
+<p>}
+```</p>
+
+<p>因为我们还没有实现<code>-push:</code>和<code>-top</code>方法，所以测试毫无疑问地失败了（在ARC环境中直接无法编译）。为了使测试立即通过我们首先需要在<code>VVStack.h</code>中声明这两个方法，然后在.m的实现文件中进行实现。令测试通过的最简单的实现是一个空的push方法以及直接返回2.3这个数：</p>
+
+<p>```objc
+//VVStack.h
+@interface VVStack : NSObject
+- (void)push:(double)num;
+- (double)top;
+@end</p>
+
+<p>//VVStack.m
+@implementation VVStack
+- (void)push:(double)num {</p>
+
+<p>}</p>
+
+<ul>
+<li>(double)top {
+  return 2.3;
+}
+@end
+```</li>
+</ul>
+
+
+<p>再次运行测试，我们顺利回到了绿灯状态。也许你很快就会说，这算哪门子实现啊，如果再增加一组测试例，比如push一个4.6，然后检查top，不就失败了么？我们难道不应该直接实现一个真正的合理的实现么？对此的回答是，在实际开发中，我们肯定不会以这样的步伐来处理像例子中这样类似的简单问题，而是会直接跳过一些error-try的步骤，实现一个比较完整的方案。但是在更多的时候，我们所关心和需要实现的目标并不是这样容易。特别是在对TDD还不熟悉的时候，我们有必要放慢节奏和动作，将整个开发理念进行充分实践，这样才有可能在之后更复杂的案例中正确使用。于是我们发扬不怕繁杂，精益求精的精神，在刚才的测试例上增加一个测试，回到<code>VVStackTests.m</code>中，在刚才的测试方法中加上：</p>
+
+<p>```objc
+- (void)testPushANumberAndGetIt {</p>
+
+<pre><code>//...
+[stack push:4.6];
+topNumber = [stack top];
+XCTAssertEqual(topNumber, 4.6, @"Top value of VVStack should be the last num pushed into it");
+</code></pre>
+
+<p>}
+```</p>
+
+<p>很好，这下子我们回到了红灯状态，这正是我们所期望的，现在是时候来考虑实现这个栈了。这个实现过于简单，也有非常多的思路，其中一种是使用一个<code>NSMutableArray</code>来存储数据，然后在<code>top</code>方法里返回最后加入的数据。修改<code>VVStack.m</code>，加入数组，更改实现：</p>
+
+<p>```objc
+//VVStack.m
+@interface VVStack()
+@property (nonatomic, strong) NSMutableArray *numbers;
+@end</p>
+
+<p>@implementation VVStack
+- (id)init {</p>
+
+<pre><code>if (self = [super init]) {
+    _numbers = [NSMutableArray new];
+}
+return self;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li><p>(void)push:(double)num {
+  [self.numbers addObject:@(num)];
+}</p></li>
+<li><p>(double)top {
+  return [[self.numbers lastObject] doubleValue];
+}
+@end
+```</p></li>
+</ul>
+
+
+<p>测试通过，注意到在<code>-testStackObjectCanBeCreated</code>和<code>testPushANumberAndGetIt</code>两个测试中都生成了一个<code>VVStack</code>对象。在这个测试文件中基本每个测试都会需要初始化对象，因此我们可以考虑在测试文件中添加一个VVStack的实例成员，并将测试中的初始化代码移到<code>-setUp</code>中，并在<code>-tearDown</code>中释放。</p>
+
+<p>接下来我们可以模仿继续实现<code>pop</code>等栈的方法。鉴于篇幅这里不再继续详细实现，大家可以自己动手试试看。记住先实现测试，然后再实现产品代码。一开始您可能会觉得这很无聊，效率低下，但是请记住这是起步练习不可缺少的一部分，而且在我们的例子中其实一切都是以“慢动作”在进行的。相信在经过实践和使用后，您将会逐渐掌握自己的节奏和重点测试。关于使用XCTest到这里为止的代码，可以在<a href="https://github.com/onevcat/VVStack/tree/xctest">github</a>上找到。</p>
+
+<h3>Kiwi和BDD的测试思想</h3>
+
+<p><code>XCTest</code>是基于OCUnit的传统测试框架，在书写性和可读性上都不太好。在测试用例太多的时候，由于各个测试方法是割裂的，想在某个很长的测试文件中找到特定的某个测试并搞明白这个测试是在做什么并不是很容易的事情。所有的测试都是由断言完成的，而很多时候断言的意义并不是特别的明确，对于项目交付或者新的开发人员加入时，往往要花上很大成本来进行理解或者转换。另外，每一个测试的描述都被写在断言之后，夹杂在代码之中，难以寻找。使用XCTest测试另外一个问题是难以进行<a href="http://www.mockobjects.com">mock或者stub</a>，而这在测试中是非常重要的一部分（关于mock测试的问题，我会在下一篇中继续深入）。</p>
+
+<p>行为驱动开发（BDD）正是为了解决上述问题而生的，作为第二代敏捷方法，BDD提倡的是通过将测试语句转换为类似自然语言的描述，开发人员可以使用更符合大众语言的习惯来书写测试，这样不论在项目交接/交付，或者之后自己修改时，都可以顺利很多。如果说作为开发者的我们日常工作是写代码，那么BDD其实就是在讲故事。一个典型的BDD的测试用例包活完整的三段式上下文，测试大多可以翻译为<code>Given..When..Then</code>的格式，读起来轻松惬意。BDD在其他语言中也已经有一些框架，包括最早的Java的JBehave和赫赫有名的Ruby的<a href="http://rspec.info">RSpec</a>和<a href="http://cukes.info">Cucumber</a>。而在objc社区中BDD框架也正在欣欣向荣地发展，得益于objc的语法本来就非常接近自然语言，再加上<a href="http://onevcat.com/2014/01/black-magic-in-macro/">C语言宏的威力</a>，我们是有可能写出漂亮优美的测试的。在objc中，现在比较流行的BDD框架有<a href="https://github.com/pivotal/cedar">cedar</a>，<a href="https://github.com/specta/specta">specta</a>和<a href="https://github.com/allending/Kiwi">Kiwi</a>。其中个人比较喜欢Kiwi，使用Kiwi写出的测试看起来大概会是这个样子的：</p>
+
+<p>```objc
+describe(@"Team", ^{</p>
+
+<pre><code>context(@"when newly created", ^{
+    it(@"should have a name", ^{
+        id team = [Team team];
+        [[team.name should] equal:@"Black Hawks"];
+    });
+
+    it(@"should have 11 players", ^{
+        id team = [Team team];
+        [[[team should] have:11] players];
+    });
+});
+</code></pre>
+
+<p>});
+```</p>
+
+<p>我们很容易根据上下文将其提取为<code>Given..When..Then</code>的三段式自然语言</p>
+
+<blockquote><p>Given a team, when newly created, it should have a name, and should have 11 players</p></blockquote>
+
+<p>很简单啊有木有！在这样的语法下，是不是写测试的兴趣都被激发出来了呢。关于Kiwi的进一步语法和使用，我们稍后详细展开。首先来看看如何在项目中添加Kiwi框架吧。</p>
+
+<h3>在项目中添加Kiwi</h3>
+
+<p>最简单和最推荐的方法当然是<a href="http://cocoapods.org">CocoaPods</a>，如果您对CocoaPods还比较陌生的话，推荐您花时间先看一看这篇<a href="http://blog.devtang.com/blog/2012/12/02/use-cocoapod-to-manage-ios-lib-dependency/">CocoaPods的简介</a>。Xcode 5和XCTest环境下，我们需要在Podfile中添加类似下面的条目（记得将<code>VVStackTests</code>换成您自己的项目的测试target的名字）：</p>
+
+<p><code>
+target :VVStackTests, :exclusive =&gt; true do
+   pod 'Kiwi/XCTest'
+end
+</code></p>
+
+<p>之后<code>pod install</code>以后，打开生成的<code>xcworkspace</code>文件，Kiwi就已经处于可用状态了。另外，为了我们在新建测试的时候能省点事儿，可以在官方repo里下载并运行安装<a href="https://github.com/allending/Kiwi/tree/master/Xcode%20Templates">Kiwi的Xcode Template</a>。如果您坚持不用CocoaPods，而想要自己进行配置Kiwi的话，可以参考<a href="https://github.com/allending/Kiwi/wiki/Setting-Up-Kiwi-2.x-without-CocoaPods">这篇wiki</a>。</p>
+
+<h3>行为描述（Specs）和期望（Expectations），Kiwi测试的基本结构</h3>
+
+<p>我们先来新建一个Kiwi测试吧。如果安装了Kiwi的Template的话，在新建文件中选择<code>Kiwi/Kiwi Spec</code>来建立一个Specs，取名为<code>SimpleString</code>，注意选择目标target为我们的测试target，模板将会在新建的文件名字后面加上Spec后缀。传统测试的文件名一般以Tests为后缀，表示这个文件中含有一组测试，而在Kiwi中，一个测试文件所包含的是一组对于行为的描述（Spec），因此习惯上使用需要测试的目标类来作为名字，并以Spec作为文件名后缀。在Xcode 5中建立测试时已经不会同时创建.h文件了，但是现在的模板中包含有对同名.h的引用，可以在创建后将其删去。如果您没有安装Kiwi的Template的话，可以直接创建一个普通的Objective-C test case class，然后将内容替换为下面这样：</p>
+
+<p>```objc</p>
+
+<h1>import &lt;Kiwi/Kiwi.h></h1>
+
+<p>SPEC_BEGIN(SimpleStringSpec)</p>
+
+<p>describe(@"SimpleString", ^{</p>
+
+<p>});</p>
+
+<p>SPEC_END
+```</p>
+
+<p>你可能会觉得这不是objc代码，甚至怀疑这些语法是否能够编译通过。其实<code>SPEC_BEGIN</code>和<code>SPEC_END</code>都是宏，它们定义了一个<code>KWSpec</code>的子类，并将其中的内容包装在一个函数中（有兴趣的朋友不妨点进去看看）。我们现在先添加一些描述和测试语句，并运行看看吧，将上面的代码的<code>SPEC_BEGIN</code>和<code>SPEC_END</code>之间的内容替换为：</p>
+
+<p>```objc
+describe(@"SimpleString", ^{</p>
+
+<pre><code>context(@"when assigned to 'Hello world'", ^{
+    NSString *greeting = @"Hello world";
+    it(@"should exist", ^{
+        [[greeting shouldNot] beNil];
+    });
+
+    it(@"should equal to 'Hello world'", ^{
+        [[greeting should] equal:@"Hello world"];
+    });
+});
+</code></pre>
+
+<p>});
+```</p>
+
+<p><code>describe</code>描述需要测试的对象内容，也即我们三段式中的<code>Given</code>，<code>context</code>描述测试上下文，也就是这个测试在<code>When</code>来进行，最后<code>it</code>中的是测试的本体，描述了这个测试应该满足的条件，三者共同构成了Kiwi测试中的行为描述。它们是可以nest的，也就是一个Spec文件中可以包含多个<code>describe</code>（虽然我们很少这么做，一个测试文件应该专注于测试一个类）；一个<code>describe</code>可以包含多个<code>context</code>，来描述类在不同情景下的行为；一个<code>context</code>可以包含多个<code>it</code>的测试例。让我们运行一下这个测试，观察输出：</p>
+
+<p><code>
+VVStack[36517:70b] + 'SimpleString, when assigned to 'Hello world', should exist' [PASSED]
+VVStack[36517:70b] + 'SimpleString, when assigned to 'Hello world', should equal to 'Hello world'' [PASSED]
+</code></p>
+
+<p>可以看到，这三个关键字的描述将在测试时被依次打印出来，形成一个完整的行为描述。除了这三个之外，Kiwi还有一些其他的行为描述关键字，其中比较重要的包括</p>
+
+<ul>
+<li><code>beforeAll(aBlock)</code> - 当前scope内部的所有的其他block运行之前调用一次</li>
+<li><code>afterAll(aBlock)</code> - 当前scope内部的所有的其他block运行之后调用一次</li>
+<li><code>beforeEach(aBlock)</code> - 在scope内的每个it之前调用一次，对于<code>context</code>的配置代码应该写在这里</li>
+<li><code>afterEach(aBlock)</code> - 在scope内的每个it之后调用一次，用于清理测试后的代码</li>
+<li><code>specify(aBlock)</code> - 可以在里面直接书写不需要描述的测试</li>
+<li><code>pending(aString, aBlock)</code> - 只打印一条log信息，不做测试。这个语句会给出一条警告，可以作为一开始集中书写行为描述时还未实现的测试的提示。</li>
+<li><code>xit(aString, aBlock)</code> - 和<code>pending</code>一样，另一种写法。因为在真正实现时测试时只需要将x删掉就是<code>it</code>，但是pending语意更明确，因此还是推荐pending</li>
+</ul>
+
+
+<p>可以看到，由于有<code>context</code>的存在，以及其可以嵌套的特性，测试的流程控制相比传统测试可以更加精确。我们更容易把before和after的作用区域限制在合适的地方。</p>
+
+<p>实际的测试写在<code>it</code>里，是由一个一个的期望(Expectations)来进行描述的，期望相当于传统测试中的断言，要是运行的结果不能匹配期望，则测试失败。在Kiwi中期望都由<code>should</code>或者<code>shouldNot</code>开头，并紧接一个或多个判断的的链式调用，大部分常见的是be或者haveSomeCondition的形式。在我们上面的例子中我们使用了should not be nil和should equal两个期望来确保字符串赋值的行为正确。其他的期望语句非常丰富，并且都符合自然语言描述，所以并不需要太多介绍。在使用的时候不妨直接按照自己的想法来描述自己的期望，一般情况下在IDE的帮助下我们都能找到想要的结果。如果您想看看完整的期望语句的列表，可以参看文档的<a href="https://github.com/allending/Kiwi/wiki/Expectations">这个页面</a>。另外，您还可以通过新建<code>KWMatcher</code>的子类，来简单地自定义自己和项目所需要的期望语句。从这一点来看，Kiwi可以说是一个非常灵活并具有可扩展性的测试框架。</p>
+
+<p>到此为止的代码可以从<a href="https://github.com/onevcat/VVStack/tree/kiwi-start">这里</a>找到。</p>
+
+<h3>Kiwi实际使用实例</h3>
+
+<p>最后我们来用Kiwi完整地实现VVStack类的测试和开发吧。首先重写刚才XCTest的相关测试：新建一个VVStackSpec作为Kiwi版的测试用例，然后把describe换成下面的代码：</p>
+
+<p>```objc
+describe(@"VVStack", ^{</p>
+
+<pre><code>context(@"when created", ^{
+    __block VVStack *stack = nil;
+    beforeEach(^{
+        stack = [VVStack new];
+    });
+
+    afterEach(^{
+        stack = nil;
+    });
+
+    it(@"should have the class VVStack", ^{
+        [[[VVStack class] shouldNot] beNil];
+    });
+
+    it(@"should exist", ^{
+        [[stack shouldNot] beNil];
+    });
+
+    it(@"should be able to push and get top", ^{
+        [stack push:2.3];
+        [[theValue([stack top]) should] equal:theValue(2.3)];
+
+        [stack push:4.6];
+        [[theValue([stack top]) should] equal:4.6 withDelta:0.001];
+    });
+
+});
+</code></pre>
+
+<p>});
+```</p>
+
+<p>看到这里的您看这段测试应该不成问题。需要注意的有两点：首先<code>stack</code>分别是在<code>beforeEach</code>和<code>afterEach</code>的block中的赋值的，因此我们需要在声明时在其前面加上<code>__block</code>标志。其次，期望描述的should或者shouldNot是作用在对象上的宏，因此对于标量，我们需要先将其转换为对象。Kiwi为我们提供了一个标量转对象的语法糖，叫做<code>theValue</code>，在做精确比较的时候我们可以直接使用例子中直接与2.3做比较这样的写法来进行对比。但是如果测试涉及到运算的话，由于浮点数精度问题，我们一般使用带有精度的比较期望来进行描述，即4.6例子中的<code>equal:withDelta:</code>（当然，这里只是为了demo，实际在这用和上面2.3一样的方法就好了）。</p>
+
+<p>接下来我们再为这个context添加一个测试例，用来测试初始状况时栈是否为空。因为我们使用了一个Array来作为存储容器，根据我们之前用过的equal方法，我们很容易想到下面这样的测试代码</p>
+
+<p>```objc
+it(@"should equal contains 0 element", ^{</p>
+
+<pre><code>[[theValue([stack.numbers count]) should] equal:theValue(0)];
+</code></pre>
+
+<p>});
+```</p>
+
+<p>这段测试在逻辑上没有太大问题，但是有非常多值得改进的地方。首先如果我们需要将原来写在Extension里的<code>numbers</code>暴露到头文件中，这对于类的封装是一种破坏，对于这个，一种常见的做法是只暴露一个<code>-count</code>方法，让其返回<code>numbers</code>的元素个数，从而保证<code>numbers</code>的私有性。另外对于取值和转换，其实theValue的存在在一定程度上是破坏了测试可读性的，我们可以想办法改善一下，比如对于0的来说，我们有<code>beZero</code>这样的期望可以使用。简单改写以后，这个<code>VVStack.h</code>和这个测试可以变成这个样子：</p>
+
+<p>```objc
+//VVStack.h
+//...
+- (NSUInteger)count;
+//...</p>
+
+<p>//VVStack.m
+//...
+- (NSUInteger)count {</p>
+
+<pre><code>return [self.numbers count];
+</code></pre>
+
+<p>}
+//...</p>
+
+<p>it(@"should equal contains 0 element", ^{</p>
+
+<pre><code>[[theValue([stack count]) should] beZero];
+</code></pre>
+
+<p>});
+```</p>
+
+<p>更进一步地，对于一个collection来说，Kiwi有一些特殊处理，比如<code>have</code>和<code>haveCountOf</code>系列的期望。如果测试的对象实现了<code>-count</code>方法的话，我们就可以使用这一系列期望来写出更好的测试语句。比如上面的测试还可以进一步写成</p>
+
+<p>```objc
+it(@"should equal contains 0 element", ^{</p>
+
+<pre><code>[[stack should] haveCountOf:0];
+</code></pre>
+
+<p>});
+```</p>
+
+<p>在这种情况下，我们并没有显式地调用VVStack的<code>-count</code>方法，所以我们可以在头文件中将其删掉。但是我们需要保留这个方法的实现，因为测试时是需要这个方法的。如果测试对象不能响应count方法的话，如你所料，测试时会扔一个unrecognized selector的错。Kiwi的内部实现是一个大量依赖了一个个行为Matcher和objc的消息转发，对objcruntime特性比较熟悉，并想更深入的朋友不放可以看看Kiwi的源码，写得相当漂亮。</p>
+
+<p>其实对于这个测试，我们还可以写出更漂亮的版本，像这样：</p>
+
+<p>```objc
+it(@"should equal contains 0 element", ^{</p>
+
+<pre><code>[[stack should] beEmpty];
+</code></pre>
+
+<p>});
+```</p>
+
+<p>好了。关于空栈这个情景下的测试感觉差不多了。我们继续用TDD的思想来完善<code>VVStack</code>类吧。栈的话，我们当然需要能够<code>-pop</code>，也就是说在（Given）给定一个栈时，（When）当栈中有元素的时候，（Then）我们可以pop它，并且得到栈顶元素。我们新建一个context，然后按照这个思路书写行为描述（测试）：</p>
+
+<p>```objc</p>
+
+<pre><code>context(@"when new created and pushed 4.6", ^{
+    __block VVStack *stack = nil;
+    beforeEach(^{
+        stack = [VVStack new];
+        [stack push:4.6];
+    });
+
+    afterEach(^{
+        stack = nil;
+    });
+
+    it(@"can be poped and the value equals 4.6", ^{
+        [[theValue([stack pop]) should] equal:theValue(4.6)];
+    });
+
+    it(@"should contains 0 element after pop", ^{
+        [stack pop];
+        [[stack should] beEmpty];
+    });
+});
+</code></pre>
+
+<p>```</p>
+
+<p>完成了测试书写后，我们开始按照设计填写产品代码。在VVStack.h中完成申明，并在.m中加入相应实现。</p>
+
+<p>```objc
+- (double)pop {</p>
+
+<pre><code>double result = [self top];
+[self.numbers removeLastObject];
+return result;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>很简单吧。而且因为有测试的保证，我们在提供像Stack这样的基础类时，就不需要等到或者在真实的环境中检测了。因为在被别人使用之前，我们自己的测试代码已经能够保证它的正确性了。<code>VVStack</code>剩余的最后一个小问题是，在栈是空的时候，我们执行pop操作时应该给出一个错误，用以提示空栈无法pop。虽然在objc中异常并不常见，但是在这个情景下是抛异常的好时机，也符合一般C语言对于出空栈的行为。我们可以在之前的“when created”上下文中加入一个期望：</p>
+
+<p>```objc
+it(@"should raise a exception when pop", ^{</p>
+
+<pre><code>[[theBlock(^{
+    [stack pop];
+}) should] raiseWithName:@"VVStackPopEmptyException"];
+</code></pre>
+
+<p>});
+```</p>
+
+<p>和<code>theValue</code>配合标量值类似，<code>theBlock</code>也是Kiwi中的一个转换语法，用来将一段程序转换为相应的matcher，使其可以被施加期望。这里我们期望空的Stack在被pop时抛出一个叫做"VVStackPopEmptyException"的异常。我们可以重构pop方法，在栈为空时给一个异常：</p>
+
+<p>```objc
+- (double)pop {</p>
+
+<pre><code>if ([self count] == 0) {
+    [NSException raise:@"VVStackPopEmptyException" format:@"Can not pop an empty stack."];
+}
+double result = [self top];
+[self.numbers removeLastObject];
+return result;
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>进一步的Kiwi</h3>
+
+<p>VVStack的测试和实现就到这里吧，根据这套测试，您可以使用自己的实现来轻易地重构这个类，而不必担心破坏它的公共接口的行为。如果需要添加新的功能或者修正已有bug的时候，我们也可以通过添加或者修改相应的测试，来确保正确性。我将会在下一篇博文中继续介绍Kiwi，看看Kiwi在异步测试和mock/stub的使用和表现如何。Kiwi现在还在比较快速的发展中，官方repo的<a href="https://github.com/allending/Kiwi/wiki">wiki</a>上有一些不错的资料和文档，可以参考。<code>VVStack</code>的项目代码可以在<a href="https://github.com/onevcat/VVStack">这个repo</a>上找到，可以作为参考。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[宏定义的黑魔法 - 宏菜鸟起飞手册]]></title>
+    <link href="http://onevcat.com/2014/01/black-magic-in-macro/"/>
+    <updated>2014-01-17T09:56:00+09:00</updated>
+    <id>http://onevcat.com/2014/01/black-magic-in-macro</id>
+    <content type="html"><![CDATA[<p><img src="http://img.onevcat.com/2014/define-title.png" alt="Happy define :)" /></p>
+
+<p>宏定义在C系开发中可以说占有举足轻重的作用。底层框架自不必说，为了编译优化和方便，以及跨平台能力，宏被大量使用，可以说底层开发离开define将寸步难行。而在更高层级进行开发时，我们会将更多的重心放在业务逻辑上，似乎对宏的使用和依赖并不多。但是使用宏定义的好处是不言自明的，在节省工作量的同时，代码可读性大大增加。如果想成为一个能写出漂亮优雅代码的开发者，宏定义绝对是必不可少的技能（虽然宏本身可能并不漂亮优雅XD）。但是因为宏定义对于很多人来说，并不像业务逻辑那样是每天会接触的东西。即使是能偶尔使用到一些宏，也更多的仅仅只停留在使用的层级，却并不会去探寻背后发生的事情。有一些开发者确实也有探寻的动力和意愿，但却在点开一个定义之后发现还有宏定义中还有其他无数定义，再加上满屏幕都是不同于平时的代码，既看不懂又不变色，于是乎心生烦恼，怒而回退。本文希望通过循序渐进的方式，通过几个例子来表述C系语言宏定义世界中的一些基本规则和技巧，从0开始，希望最后能让大家至少能看懂和还原一些相对复杂的宏。考虑到我自己现在objc使用的比较多，这个站点的读者应该也大多是使用objc的，所以有部分例子是选自objc，但是本文的大部分内容将是C系语言通用。</p>
+
+<h3>入门</h3>
+
+<p>如果您完全不知道宏是什么的话，可以先来热个身。很多人在介绍宏的时候会说，宏嘛很简单，就是简单的查找替换嘛。嗯，只说对了的一半。C中的宏分为两类，对象宏(object-like macro)和函数宏(function-like macro)。对于对象宏来说确实相对简单，但却也不是那么简单的查找替换。对象宏一般用来定义一些常数，举个例子：</p>
+
+<p>```c
+//This defines PI</p>
+
+<h1>define M_PI        3.14159265358979323846264338327950288</h1>
+
+<p>```</p>
+
+<!--more-->
+
+
+<p><code>#define</code>关键字表明即将开始定义一个宏，紧接着的<code>M_PI</code>是宏的名字，空格之后的数字是内容。类似这样的<code>#define X A</code>的宏是比较简单的，在编译时编译器会在语义分析认定是宏后，将X替换为A，这个过程称为宏的展开。比如对于上面的<code>M_PI</code></p>
+
+<p>```c</p>
+
+<h1>define M_PI        3.14159265358979323846264338327950288</h1>
+
+<p>double r = 10.0;
+double circlePerimeter = 2 * M_PI * r;
+// => double circlePerimeter = 2 * 3.14159265358979323846264338327950288 * r;</p>
+
+<p>printf("Pi is %0.7f",M_PI);
+//Pi is 3.1415927
+```</p>
+
+<p>那么让我们开始看看另一类宏吧。函数宏顾名思义，就是行为类似函数，可以接受参数的宏。具体来说，在定义的时候，如果我们在宏名字后面跟上一对括号的话，这个宏就变成了函数宏。从最简单的例子开始，比如下面这个函数宏</p>
+
+<p>```c
+//A simple function-like macro</p>
+
+<h1>define SELF(x)      x</h1>
+
+<p>NSString *name = @"Macro Rookie";
+NSLog(@"Hello %@",SELF(name));
+// => NSLog(@"Hello %@",name);
+//   => Hello Macro Rookie
+```</p>
+
+<p>这个宏做的事情是，在编译时如果遇到<code>SELF</code>，并且后面带括号，并且括号中的参数个数与定义的相符，那么就将括号中的参数换到定义的内容里去，然后替换掉原来的内容。 具体到这段代码中，<code>SELF</code>接受了一个name，然后将整个SELF(name)用name替换掉。嗯..似乎很简单很没用，身经百战阅码无数的你一定会认为这个宏是写出来卖萌的。那么接受多个参数的宏肯定也不在话下了，例如这样的：</p>
+
+<p>```c</p>
+
+<h1>define PLUS(x,y) x + y</h1>
+
+<p>printf("%d",PLUS(3,2));
+// => printf("%d",3 + 2);
+//  => 5
+```</p>
+
+<p>相比对象宏来说，函数宏要复杂一些，但是看起来也相当简单吧？嗯，那么现在热身结束，让我们正式开启宏的大门吧。</p>
+
+<h3>宏的世界，小有乾坤</h3>
+
+<p>因为宏展开其实是编辑器的预处理，因此它可以在更高层级上控制程序源码本身和编译流程。而正是这个特点，赋予了宏很强大的功能和灵活度。但是凡事都有两面性，在获取灵活的背后，是以需要大量时间投入以对各种边界情况进行考虑来作为代价的。可能这么说并不是很能让人理解，但是大部分宏（特别是函数宏）背后都有一些自己的故事，挖掘这些故事和设计的思想会是一件很有意思的事情。另外，我一直相信在实践中学习才是真正掌握知识的唯一途径，虽然可能正在看这篇博文的您可能最初并不是打算亲自动手写一些宏，但是这我们不妨开始动手从实际的书写和犯错中进行学习和挖掘，因为只有肌肉记忆和大脑记忆协同起来，才能说达到掌握的水准。可以说，写宏和用宏的过程，一定是在在犯错中学习和深入思考的过程，我们接下来要做的，就是重现这一系列过程从而提高进步。</p>
+
+<p>第一个题目是，让我们一起来实现一个<code>MIN</code>宏吧：实现一个函数宏，给定两个数字输入，将其替换为较小的那个数。比如<code>MIN(1,2)</code>出来的值是1。嗯哼，simple enough？定义宏，写好名字，两个输入，然后换成比较取值。比较取值嘛，任何一本入门级别的C程序设计上都会有讲啊，于是我们可以很快写出我们的第一个版本：</p>
+
+<p>```c
+//Version 1.0</p>
+
+<h1>define MIN(A,B) A &lt; B ? A : B</h1>
+
+<p>```</p>
+
+<p>Try一下
+<code>c
+int a = MIN(1,2);
+// =&gt; int a = 1 &lt; 2 ? 1 : 2;
+printf("%d",a);
+// =&gt; 1
+</code></p>
+
+<p>输出正确，打包发布！</p>
+
+<p><img src="http://img.onevcat.com/2014/shipit.png" alt="潇洒走一回" /></p>
+
+<p>但是在实际使用中，我们很快就遇到了这样的情况
+<code>c
+int a = 2 * MIN(3, 4);
+printf("%d",a);
+// =&gt; 4
+</code></p>
+
+<p>看起来似乎不可思议，但是我们将宏展开就知道发生什么了</p>
+
+<p><code>c
+int a = 2 * MIN(3, 4);
+// =&gt; int a = 2 * 3 &lt; 4 ? 3 : 4;
+// =&gt; int a = 6 &lt; 4 ? 3 : 4;
+// =&gt; int a = 4;
+</code></p>
+
+<p>嘛，写程序这个东西，bug出来了，原因知道了，事后大家就都是诸葛亮了。因为小于和比较符号的优先级是较低的，所以乘法先被运算了，修正非常简单嘛，加括号就好了。</p>
+
+<p>```c
+//Version 2.0</p>
+
+<h1>define MIN(A,B) (A &lt; B ? A : B)</h1>
+
+<p><code>``
+这次</code>2 * MIN(3, 4)`这样的式子就轻松愉快地拿下了。经过了这次修改，我们对自己的宏信心大增了...直到，某一天一个怒气冲冲的同事跑来摔键盘，然后给出了一个这样的例子：</p>
+
+<p><code>c
+int a = MIN(3, 4 &lt; 5 ? 4 : 5);
+printf("%d",a);
+// =&gt; 4
+</code></p>
+
+<p>简单的相比较三个数字并找到最小的一个而已，要怪就怪你没有提供三个数字比大小的宏，可怜的同事只好自己实现4和5的比较。在你开始着手解决这个问题的时候，你首先想到的也许是既然都是求最小值，那写成<code>MIN(3, MIN(4, 5))</code>是不是也可以。于是你就随手这样一改，发现结果变成了3，正是你想要的..接下来，开始怀疑之前自己是不是看错结果了，改回原样，一个4赫然出现在屏幕上。你终于意识到事情并不是你想像中那样简单，于是还是回到最原始直接的手段，展开宏。</p>
+
+<p><code>c
+int a = MIN(3, 4 &lt; 5 ? 4 : 5);
+// =&gt; int a = (3 &lt; 4 &lt; 5 ? 4 : 5 ? 3 : 4 &lt; 5 ? 4 : 5);  //希望你还记得运算符优先级
+//  =&gt; int a = ((3 &lt; (4 &lt; 5 ? 4 : 5) ? 3 : 4) &lt; 5 ? 4 : 5);  //为了您不太纠结，我给这个式子加上了括号
+//   =&gt; int a = ((3 &lt; 4 ? 3 : 4) &lt; 5 ? 4 : 5)
+//    =&gt; int a = (3 &lt; 5 ? 4 : 5)
+//     =&gt; int a = 4
+</code></p>
+
+<p>找到问题所在了，由于展开时连接符号和被展开式子中的运算符号优先级相同，导致了计算顺序发生了变化，实质上和我们的1.0版遇到的问题是差不多的，还是考虑不周。那么就再严格一点吧，3.0版！</p>
+
+<p>```c
+//Version 3.0</p>
+
+<h1>define MIN(A,B) ((A) &lt; (B) ? (A) : (B))</h1>
+
+<p>```</p>
+
+<p>至于为什么2.0版本中的<code>MIN(3, MIN(4, 5))</code>没有出问题，可以正确使用，这里作为练习，大家可以试着自己展开一下，来看看发生了什么。</p>
+
+<p>经过两次悲剧，你现在对这个简单的宏充满了疑惑。于是你跑了无数的测试用例而且它们都通过了，我们似乎彻底解决了括号问题，你也认为从此这个宏就妥妥儿的哦了。不过如果你真的这么想，那你就图样图森破了。生活总是残酷的，该来的bug也一定是会来的。不出意外地，在一个雾霾阴沉的下午，我们又收到了一个出问题的例子。</p>
+
+<p><code>c
+float a = 1.0f;
+float b = MIN(a++, 1.5f);
+printf("a=%f, b=%f",a,b);
+// =&gt; a=3.000000, b=2.000000
+</code></p>
+
+<p>拿到这个出问题的例子你的第一反应可能和我一样，这TM的谁这么二货还在比较的时候搞++，这简直乱套了！但是这样的人就是会存在，这样的事就是会发生，你也不能说人家逻辑有错误。a是1，a++表示先使用a的值进行计算，然后再加1。那么其实这个式子想要计算的是取a和b的最小值，然后a等于a加1：所以正确的输出a为2，b为1才对！嘛，满眼都是泪，让我们这些久经摧残的程序员淡定地展开这个式子，来看看这次又发生了些什么吧：</p>
+
+<p><code>c
+float a = 1.0f;
+float b = MIN(a++, 1.5f);
+// =&gt; float b = ((a++) &lt; (1.5f) ? (a++) : (1.5f))
+</code></p>
+
+<p>其实只要展开一步就很明白了，在比较a++和1.5f的时候，先取1和1.5比较，然后a自增1。接下来条件比较得到真以后又触发了一次a++，此时a已经是2，于是b得到2，最后a再次自增后值为3。出错的根源就在于我们预想的是a++只执行一次，但是由于宏展开导致了a++被多执行了，改变了预想的逻辑。解决这个问题并不是一件很简单的事情，使用的方式也很巧妙。我们需要用到一个GNU C的赋值扩展，即使用<code>({...})</code>的形式。这种形式的语句可以类似很多脚本语言，在顺次执行之后，会将最后一次的表达式的赋值作为返回。举个简单的例子，下面的代码执行完毕后a的值为3，而且b和c只存在于大括号限定的代码域中</p>
+
+<p>```c
+int a = ({</p>
+
+<pre><code>int b = 1;
+int c = 2;
+b + c;
+</code></pre>
+
+<p>});
+// => a is 3
+```</p>
+
+<p>有了这个扩展，我们就能做到之前很多做不到的事情了。比如彻底解决<code>MIN</code>宏定义的问题，而也正是GNU C中<code>MIN</code>的标准写法</p>
+
+<p>```c
+//GNUC MIN</p>
+
+<h1>define MIN(A,B)    ({ <strong>typeof</strong>(A) <strong>a = (A); </strong>typeof<strong>(B) </strong>b = (B); <strong>a &lt; </strong>b ? <strong>a : </strong>b; })</h1>
+
+<p>```</p>
+
+<p>这里定义了三个语句，分别以输入的类型申明了<code>__a</code>和<code>__b</code>，并使用输入为其赋值，接下来做一个简单的条件比较，得到<code>__a</code>和<code>__b</code>中的较小值，并使用赋值扩展将结果作为返回。这样的实现保证了不改变原来的逻辑，先进行一次赋值，也避免了括号优先级的问题，可以说是一个比较好的解决方案了。如果编译环境支持GNU C的这个扩展，那么毫无疑问我们应该采用这种方式来书写我们的<code>MIN</code>宏，如果不支持这个环境扩展，那我们只有人为地规定参数不带运算或者函数调用，以避免出错。</p>
+
+<p>关于<code>MIN</code>我们讨论已经够多了，但是其实还存留一个悬疑的地方。如果在同一个scope内已经有<code>__a</code>或者<code>__b</code>的定义的话（虽然一般来说不会出现这种悲剧的命名，不过谁知道呢），这个宏可能出现问题。在申明后赋值将因为定义重复而无法被初始化，导致宏的行为不可预知。如果您有兴趣，不妨自己动手试试看结果会是什么。Apple在Clang中彻底解决了这个问题，我们把Xcode打开随便建一个新工程，在代码中输入<code>MIN(1,1)</code>，然后Cmd+点击即可找到clang中 <code>MIN</code>的写法。为了方便说明，我直接把相关的部分抄录如下：</p>
+
+<p>```objc
+//CLANG MIN</p>
+
+<h1>define <strong>NSX_PASTE</strong>(A,B) A##B</h1>
+
+<h1>define MIN(A,B) <strong>NSMIN_IMPL</strong>(A,B,<strong>COUNTER</strong>)</h1>
+
+<h1>define <strong>NSMIN_IMPL</strong>(A,B,L) ({ <strong>typeof</strong>(A) <strong>NSX_PASTE</strong>(<strong>a,L) = (A); </strong>typeof<strong>(B) </strong>NSX_PASTE<strong>(</strong>b,L) = (B); (<strong>NSX_PASTE</strong>(<strong>a,L) &lt; </strong>NSX_PASTE<strong>(</strong>b,L)) ? <strong>NSX_PASTE</strong>(<strong>a,L) : </strong>NSX_PASTE<strong>(</strong>b,L); })</h1>
+
+<p>```</p>
+
+<p>似乎有点长，看起来也很吃力。我们先美化一下这宏，首先是最后那个<code>__NSMIN_IMPL__</code>内容实在是太长了。我们知道代码的话是可以插入换行而不影响含义的，宏是否也可以呢？答案是肯定的，只不过我们不能使用一个单一的回车来完成，而必须在回车前加上一个反斜杠<code>\</code>。改写一下，为其加上换行好看些：</p>
+
+<p>```objc</p>
+
+<h1>define <strong>NSX_PASTE</strong>(A,B) A##B</h1>
+
+<h1>define MIN(A,B) <strong>NSMIN_IMPL</strong>(A,B,<strong>COUNTER</strong>)</h1>
+
+<h1>define <strong>NSMIN_IMPL</strong>(A,B,L) ({ <strong>typeof</strong>(A) <strong>NSX_PASTE</strong>(__a,L) = (A); \</h1>
+
+<pre><code>                             __typeof__(B) __NSX_PASTE__(__b,L) = (B); \
+                             (__NSX_PASTE__(__a,L) &lt; __NSX_PASTE__(__b,L)) ? __NSX_PASTE__(__a,L) : __NSX_PASTE__(__b,L); \
+                          })
+</code></pre>
+
+<p>```</p>
+
+<p>但可以看出<code>MIN</code>一共由三个宏定义组合而成。第一个<code>__NSX_PASTE__</code>里出现的两个连着的井号<code>##</code>在宏中是一个特殊符号，它表示将两个参数连接起来这种运算。注意函数宏必须是有意义的运算，因此你不能直接写<code>AB</code>来连接两个参数，而需要写成例子中的<code>A##B</code>。宏中还有一切其他的自成一脉的运算符号，我们稍后还会介绍几个。接下来是我们调用的两个参数的<code>MIN</code>，它做的事是调用了另一个三个参数的宏<code>__NSMIN_IMPL__</code>，其中前两个参数就是我们的输入，而第三个<code>__COUNTER__</code>我们似乎不认识，也不知道其从何而来。其实<code>__COUNTER__</code>是一个预定义的宏，这个值在编译过程中将从0开始计数，每次被调用时加1。因为唯一性，所以很多时候被用来构造独立的变量名称。有了上面的基础，再来看最后的实现宏就很简单了。整体思路和前面的实现和之前的GNUC MIN是一样的，区别在于为变量名<code>__a</code>和<code>__b</code>添加了一个计数后缀，这样大大避免了变量名相同而导致问题的可能性（当然如果你执拗地把变量叫做__a9527并且出问题了的话，就只能说不作死就不会死了）。</p>
+
+<p>花了好多功夫，我们终于把一个简单的<code>MIN</code>宏彻底搞清楚了。宏就是这样一类东西，简单的表面之下隐藏了很多玄机，可谓小有乾坤。作为练习大家可以自己尝试一下实现一个<code>SQUARE(A)</code>，给一个数字输入，输出它的平方的宏。虽然一般这个计算现在都是用inline来做了，但是通过和<code>MIN</code>类似的思路我们是可以很好地实现它的，动手试一试吧 :)</p>
+
+<h3>Log，永恒的主题</h3>
+
+<p>Log人人爱，它为我们指明前进方向，它为我们抓虫提供帮助。在objc中，我们最多使用的log方法就是<code>NSLog</code>输出信息到控制台了，但是NSLog的标准输出可谓残废，有用信息完全不够，比如下面这段代码：</p>
+
+<p><code>objc
+NSArray *array = @[@"Hello", @"My", @"Macro"];
+NSLog (@"The array is %@", array);
+</code></p>
+
+<p>打印到控制台里的结果是类似这样的</p>
+
+<p>```
+2014-01-20 11:22:11.835 TestProject[23061:70b] The array is (</p>
+
+<pre><code>Hello,
+My,
+Macro
+</code></pre>
+
+<p>)
+```</p>
+
+<p>我们在输出的时候关心什么？除了结果以外，很多情况下我们会对这行log的所在的文件位置方法什么的会比较关心。在每次NSLog里都手动加上方法名字和位置信息什么的无疑是个笨办法，而如果一个工程里已经有很多<code>NSLog</code>的调用了，一个一个手动去改的话无疑也是噩梦。我们通过宏，可以很简单地完成对<code>NSLog</code>原生行为的改进，优雅，高效。只需要在预编译的pch文件中加上</p>
+
+<p>```objc
+//A better version of NSLog</p>
+
+<h1>define NSLog(format, ...) do {                                                                          \</h1>
+
+<pre><code>                         fprintf(stderr, "&lt;%s : %d&gt; %s\n",                                           \
+                         [[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String],  \
+                         __LINE__, __func__);                                                        \
+                         (NSLog)((format), ##__VA_ARGS__);                                           \
+                         fprintf(stderr, "-------\n");                                               \
+                       } while (0)
+</code></pre>
+
+<p>```</p>
+
+<p>嘛，这是我们到现在为止见到的最长的一个宏了吧...没关系，一点一点来分析就好。首先是定义部分，第2行的<code>NSLog(format, ...)</code>。我们看到的是一个函数宏，但是它的参数比较奇怪，第二个参数是<code>...</code>，在宏定义（其实也包括函数定义）的时候，写为<code>...</code>的参数被叫做可变参数(variadic)。可变参数的个数不做限定。在这个宏定义中，除了第一个参数<code>format</code>将被单独处理外，接下来输入的参数将作为整体一并看待。回想一下NSLog的用法，我们在使用NSLog时，往往是先给一个format字符串作为第一个参数，然后根据定义的格式在后面的参数里跟上写要输出的变量之类的。这里第一个格式化字符串即对应宏里的<code>format</code>，后面的变量全部映射为<code>...</code>作为整体处理。</p>
+
+<p>接下来宏的内容部分。上来就是一个下马威，我们遇到了一个do while语句...想想看你上次使用do while是什么时候吧？也许是C程序设计课的大作业？或者是某次早已被遗忘的算法面试上？总之虽然大家都是明白这个语句的，但是实际中可能用到它的机会少之又少。乍一看似乎这个do while什么都没做，因为while是0，所以do肯定只会被执行一次。那么它存在的意义是什么呢，我们是不是可以直接简化一下这个宏，把它给去掉，变成这个样子呢？</p>
+
+<p>```objc
+//A wrong version of NSLog</p>
+
+<h1>define NSLog(format, ...)   fprintf(stderr, "&lt;%s : %d> %s\n",                                           \</h1>
+
+<pre><code>                         [[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String],  \
+                         __LINE__, __func__);                                                        \
+                         (NSLog)((format), ##__VA_ARGS__);                                           \
+                         fprintf(stderr, "-------\n");                                               
+</code></pre>
+
+<p>```</p>
+
+<p>答案当然是否定的，也许简单的测试里你没有遇到问题，但是在生产环境中这个宏显然悲剧了。考虑下面的常见情况</p>
+
+<p>```objc
+if (errorHappend)</p>
+
+<pre><code>NSLog(@"Oops, error happened");
+</code></pre>
+
+<p>```</p>
+
+<p>展开以后将会变成
+```objc
+if (errorHappend)</p>
+
+<pre><code>fprintf((stderr, "&lt;%s : %d&gt; %s\n",[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+</code></pre>
+
+<p>(NSLog)((format), ##<strong>VA_ARGS</strong>); //I will expand this later
+fprintf(stderr, "-------\n");
+```
+注意..C系语言可不是靠缩进来控制代码块和逻辑关系的。所以说如果使用这个宏的人没有在条件判断后加大括号的话，你的宏就会一直调用真正的NSLog输出东西，这显然不是我们想要的逻辑。当然在这里还是需要重新批评一下认为if后的单条执行语句不加大括号也没问题的同学，这是陋习，无需理由，请改正。不论是不是一条语句，也不论是if后还是else后，都加上大括号，是对别人和自己的一种尊重。</p>
+
+<p>好了知道我们的宏是如何失效的，也就知道了修改的方法。作为宏的开发者，应该力求使用者在最大限度的情况下也不会出错，于是我们想到直接用一对大括号把宏内容括起来，大概就万事大吉了？像这样：</p>
+
+<p>```objc
+//Another wrong version of NSLog</p>
+
+<h1>define NSLog(format, ...)   {</h1>
+
+<pre><code>                           fprintf(stderr, "&lt;%s : %d&gt; %s\n",                                           \
+                           [[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String],  \
+                           __LINE__, __func__);                                                        \
+                           (NSLog)((format), ##__VA_ARGS__);                                           \
+                           fprintf(stderr, "-------\n");                                               \
+                         }
+</code></pre>
+
+<p>```</p>
+
+<p>展开刚才的那个式子，结果是
+```objc
+//I am sorry if you don't like { in the same like. But I am a fan of this style :P
+if (errorHappend) {</p>
+
+<pre><code>fprintf((stderr, "&lt;%s : %d&gt; %s\n",[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+(NSLog)((format), ##__VA_ARGS__);
+fprintf(stderr, "-------\n");
+</code></pre>
+
+<p>};
+```</p>
+
+<p>编译，执行，正确！因为用大括号标识代码块是不会嫌多的，所以这样一来的话我们的宏在不论if后面有没有大括号的情况下都能工作了！这么看来，前面例子中的do while果然是多余的？于是我们又可以愉快地发布了？如果你够细心的话，可能已经发现问题了，那就是上面最后的一个分号。虽然编译运行测试没什么问题，但是始终稍微有些刺眼有木有？没错，因为我们在写NSLog本身的时候，是将其当作一条语句来处理的，后面跟了一个分号，在宏展开后，这个分号就如同噩梦一般的多出来了。什么，你还没看出哪儿有问题？试试看展开这个例子吧：</p>
+
+<p>```objc
+if (errorHappend)</p>
+
+<pre><code>NSLog(@"Oops, error happened");
+</code></pre>
+
+<p>else</p>
+
+<pre><code>//Yep, no error, I am happy~ :)
+</code></pre>
+
+<p>```</p>
+
+<p>No! I am not haapy at all! 因为编译错误了！实际上这个宏展开以后变成了这个样子：</p>
+
+<p>```objc
+if (errorHappend) {</p>
+
+<pre><code>fprintf((stderr, "&lt;%s : %d&gt; %s\n",[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+(NSLog)((format), ##__VA_ARGS__);
+fprintf(stderr, "-------\n");
+</code></pre>
+
+<p>}; else {</p>
+
+<pre><code>//Yep, no error, I am happy~ :)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>因为else前面多了一个分号，导致了编译错误，很恼火..要是写代码的人乖乖写大括号不就啥事儿没有了么？但是我们还是有巧妙的解决方法的，那就是上面的do while。把宏的代码块添加到do中，然后之后while(0)，在行为上没有任何改变，但是可以巧妙地吃掉那个悲剧的分号，使用do while的版本展开以后是这个样子的</p>
+
+<p>```objc
+if (errorHappend)</p>
+
+<pre><code>do {
+    fprintf((stderr, "&lt;%s : %d&gt; %s\n",[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+    (NSLog)((format), ##__VA_ARGS__);
+    fprintf(stderr, "-------\n");
+} while (0);
+</code></pre>
+
+<p>else {</p>
+
+<pre><code>//Yep, no error, I am really happy~ :)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>这个吃掉分号的方法被大量运用在代码块宏中，几乎已经成为了标准写法。而且while(0)的好处在于，在编译的时候，编译器基本都会为你做好优化，把这部分内容去掉，最终编译的结果不会因为这个do while而导致运行效率上的差异。在终于弄明白了这个奇怪的do while之后，我们终于可以继续深入到这个宏里面了。宏本体内容的第一行没有什么值得多说的<code>fprintf(stderr, "&lt;%s : %d&gt; %s\n",</code>，简单的格式化输出而已。注意我们使用了<code>\</code>将这个宏分成了好几行来写，实际在最后展开时会被合并到同一行内，我们在刚才<code>MIN</code>最后也用到了反斜杠，希望你还能记得。接下来一行我们填写这个格式输出中的三个token，</p>
+
+<p><code>
+[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+</code></p>
+
+<p>这里用到了三个预定义宏，和刚才的<code>__COUNTER__</code>类似，预定义宏的行为是由编译器指定的。<code>__FILE__</code>返回当前文件的绝对路径，<code>__LINE__</code>返回展开该宏时在文件中的行数，<code>__func__</code>是改宏所在scope的函数名称。我们在做Log输出时如果带上这这三个参数，便可以加快解读Log，迅速定位。关于编译器预定义的Log以及它们的一些实现机制，感兴趣的同学可以移步到gcc文档的<a href="http://gcc.gnu.org/onlinedocs/cpp/Predefined-Macros.html#Predefined-Macros">PreDefine页面</a>和clang的<a href="http://clang.llvm.org/docs/LanguageExtensions.html#builtin-macros">Builtin Macro</a>进行查看。在这里我们将格式化输出的三个参数分别设定为文件名的最后一个部分（因为绝对路径太长很难看），行数，以及方法名称。</p>
+
+<p>接下来是还原原始的NSLog，<code>(NSLog)((format), ##__VA_ARGS__);</code>中出现了另一个预定义的宏<code>__VA_ARGS__</code>（我们似乎已经找出规律了，前后双下杠的一般都是预定义）。<code>__VA_ARGS__</code>表示的是宏定义中的<code>...</code>中的所有剩余参数。我们之前说过可变参数将被统一处理，在这里展开的时候编译器会将<code>__VA_ARGS__</code>直接替换为输入中从第二个参数开始的剩余参数。另外一个悬疑点是在它前面出现了两个井号<code>##</code>。还记得我们上面在<code>MIN</code>中的两个井号么，在那里两个井号的意思是将前后两项合并，在这里做的事情比较类似，将前面的格式化字符串和后面的参数列表合并，这样我们就得到了一个完整的NSLog方法了。之后的几行相信大家自己看懂也没有问题了，最后输出一下试试看，大概看起来会是这样的。</p>
+
+<h2>```</h2>
+
+<p>&lt;AppDelegate.m : 46> -[AppDelegate application:didFinishLaunchingWithOptions:]
+2014-01-20 16:44:25.480 TestProject[30466:70b] The array is (</p>
+
+<pre><code>Hello,
+My,
+Macro
+</code></pre>
+
+<h2>)</h2>
+
+<p>```</p>
+
+<p>带有文件，行号和方法的输出，并且用横杠隔开了（请原谅我没有质感的设计，也许我应该画一只牛，比如这样？），debug的时候也许会轻松一些吧 :)</p>
+
+<p><img src="http://img.onevcat.com/2014/cowsay-lolcat.png" alt="hello cowsay" /></p>
+
+<p>这个Log有三个悬念点，首先是为什么我们要把format单独写出来，然后吧其他参数作为可变参数传递呢？如果我们不要那个format，而直接写成<code>NSLog(...)</code>会不会有问题？对于我们这里这个例子来说的话是没有变化的，但是我们需要记住的是<code>...</code>是可变参数列表，它可以代表一个、两个，或者是很多个参数，但同时它也能代表零个参数。如果我们在申明这个宏的时候没有指定format参数，而直接使用参数列表，那么在使用中不写参数的NSLog()也将被匹配到这个宏中，导致编译无法通过。如果你手边有Xcode，也可以看看Cocoa中真正的NSLog方法的实现，可以看到它也是接收一个格式参数和一个参数列表的形式，我们在宏里这么定义，正是为了其传入正确合适的参数，从而保证使用者可以按照原来的方式正确使用这个宏。</p>
+
+<p>第二点是既然我们的可变参数可以接受任意个输入，那么在只有一个format输入，而可变参数个数为零的时候会发生什么呢？不妨展开看一看，记住<code>##</code>的作用是拼接前后，而现在<code>##</code>之后的可变参数是空：</p>
+
+<p>```
+NSLog(@"Hello");
+=> do {</p>
+
+<pre><code>   fprintf((stderr, "&lt;%s : %d&gt; %s\n",[[[NSString stringWithUTF8String:__FILE__] lastPathComponent] UTF8String], __LINE__, __func__);
+   (NSLog)((@"Hello"), );
+   fprintf(stderr, "-------\n");
+</code></pre>
+
+<p>   } while (0);</p>
+
+<p>```</p>
+
+<p>中间的一行<code>(NSLog)(@"Hello", );</code>似乎是存在问题的，你一定会有疑惑，这种方式怎么可能编译通过呢？！原来大神们其实早已想到这个问题，并且进行了一点特殊的处理。这里有个特殊的规则，在<code>逗号</code>和<code>__VA_ARGS__</code>之间的双井号，除了拼接前后文本之外，还有一个功能，那就是如果后方文本为空，那么它会将前面一个逗号吃掉。这个特性当且仅当上面说的条件成立时才会生效，因此可以说是特例。加上这条规则后，我们就可以将刚才的式子展开为正确的<code>(NSLog)((@"Hello"));</code>了。</p>
+
+<p>最后一个值得讨论的地方是<code>(NSLog)((format), ##__VA_ARGS__);</code>的括号使用。把看起来能去掉的括号去掉，写成<code>NSLog(format, ##__VA_ARGS__);</code>是否可以呢？在这里的话应该是没有什么大问题的，首先format不会被调用多次也不太存在误用的可能性（因为最后编译器会检查NSLog的输入是否正确）。另外你也不用担心展开以后式子里的NSLog会再次被自己展开，虽然展开式中NSLog也满足了我们的宏定义，但是宏的展开非常聪明，展开后会自身无限循环的情况，就不会再次被展开了。</p>
+
+<p>作为一个您读到了这里的小奖励，附送三个debug输出rect，size和point的宏，希望您能用上（嗯..想想曾经有多少次你需要打印这些结构体的某个数字而被折磨致死，让它们玩儿蛋去吧！当然请先加油看懂它们吧）</p>
+
+<p>```</p>
+
+<h1>define NSLogRect(rect) NSLog(@"%s x:%.4f, y:%.4f, w:%.4f, h:%.4f", #rect, rect.origin.x, rect.origin.y, rect.size.width, rect.size.height)</h1>
+
+<h1>define NSLogSize(size) NSLog(@"%s w:%.4f, h:%.4f", #size, size.width, size.height)</h1>
+
+<h1>define NSLogPoint(point) NSLog(@"%s x:%.4f, y:%.4f", #point, point.x, point.y)</h1>
+
+<p>```</p>
+
+<h3>两个实际应用的例子</h3>
+
+<p>当然不是说上面介绍的宏实际中不能用。它们相对简单，但是里面坑不少，所以显得很有特点，非常适合作为入门用。而实际上在日常中很多我们常用的宏并没有那么多奇怪的问题，很多时候我们按照想法去实现，再稍微注意一下上述介绍的可能存在的共通问题，一个高质量的宏就可以诞生。如果能写出一些有意义价值的宏，小了从对你的代码的使用者来说，大了从整个社区整个世界和减少碳排放来说，你都做出了相当的贡献。我们通过几个实际的例子来看看，宏是如何改变我们的生活，和写代码的习惯的吧。</p>
+
+<p>先来看看这两个宏</p>
+
+<p>```objc</p>
+
+<h1>define XCTAssertTrue(expression, format...) \</h1>
+
+<pre><code>_XCTPrimitiveAssertTrue(expression, ## format)
+</code></pre>
+
+<h1>define _XCTPrimitiveAssertTrue(expression, format...) \</h1>
+
+<p>({ \</p>
+
+<pre><code>@try { \
+    BOOL _evaluatedExpression = !!(expression); \
+    if (!_evaluatedExpression) { \
+        _XCTRegisterFailure(_XCTFailureDescription(_XCTAssertion_True, 0, @#expression),format); \
+    } \
+} \
+@catch (id exception) { \
+    _XCTRegisterFailure(_XCTFailureDescription(_XCTAssertion_True, 1, @#expression, [exception reason]),format); \
+}\
+</code></pre>
+
+<p>})
+```</p>
+
+<p>如果您常年做苹果开发，却没有见过或者完全不知道<code>XCTAssertTrue</code>是什么的话，强烈建议补习一下测试驱动开发的相关知识，我想应该会对您之后的道路很有帮助。如果你已经很熟悉这个命令了，那我们一起开始来看看幕后发生了什么。</p>
+
+<p>有了上面的基础，相信您大体上应该可以自行解读这个宏了。<code>({...})</code>的语法和<code>##</code>都很熟悉了，这里有三个值得注意的地方，在这个宏的一开始，我们后面的的参数是<code>format...</code>，这其实也是可变参数的一种写法，和<code>...</code>与<code>__VA_ARGS__</code>配对类似，<code>{NAME}...</code>将于<code>{NAME}</code>配对使用。也就是说，在这里宏内容的<code>format</code>指代的其实就是定义的先对<code>expression</code>取了两次反？我不是科班出身，但是我还能依稀记得这在大学程序课上讲过，两次取反的操作可以确保结果是BOOL值，这在objc中还是比较重要的（关于objc中BOOL的讨论已经有很多，如果您还没能分清BOOL, bool和Boolean，可以参看<a href="http://nshipster.com/bool/">NSHisper的这篇文章</a>）。然后就是<code>@#expression</code>这个式子。我们接触过双井号<code>##</code>，而这里我们看到的操作符是单井号<code>#</code>，注意井号前面的<code>@</code>是objc的编译符号，不属于宏操作的对象。单个井号的作用是字符串化，简单来说就是将替换后在两头加上""，转为一个C字符串。这里使用@然后紧跟#expression，出来后就是一个内容是expression的内容的NSString。然后这个NSString再作为参数传递给<code>_XCTRegisterFailure</code>和<code>_XCTFailureDescription</code>等，继续进行展开，这些是后话。简单一瞥，我们大概就可以想象宏帮助我们省了多少事儿了，如果各位看官要是写个断言还要来个十多行的话，想象都会疯掉的吧。</p>
+
+<p>另外一个例子，找了人民群众喜闻乐见的<a href="https://github.com/ReactiveCocoa/ReactiveCocoa">ReactiveCocoa(RAC)</a>中的一个宏定义。对于RAC不熟悉或者没听过的朋友，可以简单地看看<a href="http://blog.leezhong.com">Limboy的一系列相关博文</a>（搜索ReactiveCocoa），介绍的很棒。如果觉得“哇哦这个好酷我很想学”的话，不妨可以跟随raywenderlich上这个<a href="http://www.raywenderlich.com/55384/ios-7-best-practices-part-1">系列的教程</a>做一些实践，里面简单地用到了RAC，但是都已经包含了RAC的基本用法了。RAC中有几个很重要的宏，它们是保证RAC简洁好用的基本，可以说要是没有这几个宏的话，是不会有人喜欢RAC的。其中<code>RACObserve</code>就是其中一个，它通过KVC来为对象的某个属性创建一个信号返回（如果你看不懂这句话，不要担心，这对你理解这个宏的写法和展开没有任何影响）。对于这个宏，我决定不再像上面那样展开和讲解，我会在最后把相关的宏都贴出来，大家不妨拿它练练手，看看能不能将其展开到代码的状态，并且明白其中都发生了些什么。如果你遇到什么问题或者在展开过程中有所心得，欢迎在评论里留言分享和交流 :)</p>
+
+<p>好了，这篇文章已经够长了。希望在看过以后您在看到宏的时候不再发怵，而是可以很开心地说这个我会这个我会这个我也会。最终目标当然是写出漂亮高效简洁的宏，这不论对于提高生产力还是<del>震慑你的同事</del>提升自己实力都会很有帮助。</p>
+
+<p>另外，在这里一定要宣传一下关注了很久的<a href="http://weibo.com/hangcom">@hangcom</a> 吴航前辈的新书《iOS应用逆向工程》。很荣幸能够在发布之前得到前辈的允许拜读了整本书，可以说看的畅快淋漓。我之前并没有越狱开发的任何基础，也对相关领域知之甚少，在这样的前提下跟随书中的教程和例子进行探索的过程可以说是十分有趣。我也得以能够用不同的眼光和高度来审视这几年所从事的iOS开发行业，获益良多。可以说《iOS应用逆向工程》是我近期所愉快阅读到的很cool的一本好书。现在这本书还在预售中，但是距离1月28日的正式发售已经很近，有兴趣的同学可以前往<a href="http://www.amazon.cn/gp/product/B00HQW9AA6/ref=s9_simh_gw_p14_d0_i6?pf_rd_m=A1AJ19PSB66TGU&amp;pf_rd_s=center-2&amp;pf_rd_r=1KY5VBPQDKMCCWC07ANV&amp;pf_rd_t=101&amp;pf_rd_p=108773272&amp;pf_rd_i=899254051">亚马逊</a>或者<a href="http://product.china-pub.com/3769262">ChinaPub</a>的相关页面预定，相信这本书将会是iOS技术人员非常棒的春节读物。</p>
+
+<p>最后是我们说好的留给大家玩的练习，我加了一点注释帮助大家稍微理解每个宏是做什么的，在文章后面留了一块试验田，大家可以随便填写玩弄。总之，加油！</p>
+
+<p>```
+//调用 RACSignal是类的名字
+RACSignal *signal = RACObserve(self, currentLocation);</p>
+
+<p>//以下开始是宏定义
+//rac_valuesForKeyPath:observer:是方法名</p>
+
+<h1>define RACObserve(TARGET, KEYPATH) \</h1>
+
+<pre><code>[(id)(TARGET) rac_valuesForKeyPath:@keypath(TARGET, KEYPATH) observer:self]
+</code></pre>
+
+<h1>define keypath(...) \</h1>
+
+<pre><code>metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__))(keypath1(__VA_ARGS__))(keypath2(__VA_ARGS__))
+</code></pre>
+
+<p>//这个宏在取得keypath的同时在编译期间判断keypath是否存在，避免误写
+//您可以先不用介意这里面的巫术..</p>
+
+<h1>define keypath1(PATH) \</h1>
+
+<pre><code>(((void)(NO &amp;&amp; ((void)PATH, NO)), strchr(# PATH, '.') + 1))
+</code></pre>
+
+<h1>define keypath2(OBJ, PATH) \</h1>
+
+<pre><code>(((void)(NO &amp;&amp; ((void)OBJ.PATH, NO)), # PATH))
+</code></pre>
+
+<p>//A和B是否相等，若相等则展开为后面的第一项，否则展开为后面的第二项
+//eg. metamacro_if_eq(0, 0)(true)(false) => true
+//    metamacro_if_eq(0, 1)(true)(false) => false</p>
+
+<h1>define metamacro_if_eq(A, B) \</h1>
+
+<pre><code>    metamacro_concat(metamacro_if_eq, A)(B)
+</code></pre>
+
+<h1>define metamacro_if_eq1(VALUE) metamacro_if_eq0(metamacro_dec(VALUE))</h1>
+
+<h1>define metamacro_if_eq0(VALUE) \</h1>
+
+<pre><code>metamacro_concat(metamacro_if_eq0_, VALUE)
+</code></pre>
+
+<h1>define metamacro_if_eq0_1(...) metamacro_expand_</h1>
+
+<h1>define metamacro_expand_(...) <strong>VA_ARGS</strong></h1>
+
+<h1>define metamacro_argcount(...) \</h1>
+
+<pre><code>    metamacro_at(20, __VA_ARGS__, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+</code></pre>
+
+<h1>define metamacro_at(N, ...) \</h1>
+
+<pre><code>    metamacro_concat(metamacro_at, N)(__VA_ARGS__)
+</code></pre>
+
+<h1>define metamacro_concat(A, B) \</h1>
+
+<pre><code>    metamacro_concat_(A, B)
+</code></pre>
+
+<h1>define metamacro_concat_(A, B) A ## B</h1>
+
+<h1>define metamacro_at2(<em>0, </em>1, ...) metamacro_head(<strong>VA_ARGS</strong>)</h1>
+
+<h1>define metamacro_at20(<em>0, </em>1, <em>2, </em>3, <em>4, </em>5, <em>6, </em>7, <em>8, </em>9, <em>10, </em>11, <em>12, </em>13, <em>14, </em>15, <em>16, </em>17, <em>18, </em>19, ...) metamacro_head(<strong>VA_ARGS</strong>)</h1>
+
+<h1>define metamacro_head(...) \</h1>
+
+<pre><code>    metamacro_head_(__VA_ARGS__, 0)
+</code></pre>
+
+<h1>define metamacro_head_(FIRST, ...) FIRST</h1>
+
+<h1>define metamacro_dec(VAL) \</h1>
+
+<pre><code>    metamacro_at(VAL, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+</code></pre>
+
+<p>```</p>
+
+<div id="editor">//调用 RACSignal是类的名字
+RACSignal *signal = RACObserve(self, currentLocation);</div>
+
+
+
+
+<script src="http://onevcat.com/javascripts/src-min/ace.js" type="text/javascript" charset="utf-8"></script>
+
+
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/github");
+    editor.getSession().setMode("ace/mode/objectivec");
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[代码手写UI，xib和StoryBoard间的博弈，以及Interface Builder的一些小技巧]]></title>
+    <link href="http://onevcat.com/2013/12/code-vs-xib-vs-storyboard/"/>
+    <updated>2013-12-31T21:32:00+09:00</updated>
+    <id>http://onevcat.com/2013/12/code-vs-xib-vs-storyboard</id>
+    <content type="html"><![CDATA[<p><img src="http://img.onevcat.com/2013/code-xib-sb.png" alt="Code-vs-Xibs-vs-StroyBoard" /></p>
+
+<p>最近接触了几个刚入门的iOS学习者，他们之中存在一个普遍和困惑和疑问，就是应该如何制作UI界面。iOS应用是非常重视用户体验的，可以说绝大多数的应用成功与否与交互设计以及UI是否漂亮易用有着非常大的关系。而随着iOS开发发展至今，可以说在UI制作上大家逐渐分化为了三种主要流派：使用代码手写UI及布局；使用单个xib文件组织viewController或者view；使用StoryBoard来通过单个或很少的几个（关于这点稍后会进行展开）文件构建全部UI。应该使用哪种方式来制作UI已经是iOS开发中亘古不变的争论话题了，或许永远不会有一个统一的结论。但是首先需要知道的是三种方式各有优劣，所以也各有自己最适用的场合，而不会有完全的孰优孰劣。对于初学iOS开发来说，一时间其实是很难判定最适合自己的UI架构方式的。在这篇文章里我希望能够通过自己的经验给出一些意见，以期能帮助入门者来挑选最适合自己应用场景的方案。对于老鸟的话，也不妨对照自己平日的使用习惯和运用场景，看看有没有可以改进或变化的地方。最后，因为我本人现在最习惯和喜欢的是用Interface Builder(之后简称IB)及xib来做UI，所以文末附上了一些IB使用时候的小技巧，算是做个总结。</p>
+
+<!--more-->
+
+
+<h3>代码手写UI</h3>
+
+<p>这种方法经常被学院派的极客或者依赖多人合作的大型项目大规模使用。Geek们喜欢用代码构建UI，是因为代码是键盘敲出来的，这样可以做到不开IB，手不离开键盘就完成工作，可以专注于编码环境，看起来很cool很高效，而且不到运行时大家都不知道会是什么样子，也显出了程序员这一职业的高大上及神秘气息（这个真的不是在黑..想想大家一起在设计师背后指点江山的场景吧）。大型多人合作项目使用代码构建UI，主要是看中纯代码在版本管理时的优势，检查追踪改动以及进行代码合并相对容易一些。</p>
+
+<p>另外，代码UI可以说具有最好的代码重用性。如果你的目的是写一些可以高度重用的控件提供给其他开发者使用，那毫无疑问最好的选择应该是使用代码来完成UIView的子类。这样进一步的修改和其他开发者在使用时，都会方便不少。使用代码也是最为强大的，会有xib或者StoryBoard做不了的事情，但是使用代码最终一定能够完成所要的需求。</p>
+
+<p>但是代码手写UI的劣势同时也是最明显的，主要就是一个字：慢。首先相比可视化的IB来说，完成一个并不太复杂的界面，你可能需要写上数百行的UI代码。不论是初始化一个Label，还是设定一个frame或者添加一个target-action，都需要写代码，这不仅在前期极为浪费时间，在之后维护时代码定位和寻找也会很痛苦。其次，因为你无法直观地看到你能得到的结果，所以你很可能需要不断地<code>Cmd+R</code>/<code>Cmd+.</code>来修改各个视图的位置大小。即使你用上了<a href="http://revealapp.com">Reveal</a>或者<a href="https://github.com/mikr/RestartLessOften">RestartLessOften</a>之类的工具，也还是无法特别方便地完成需要的布局。另外加上如果需要利用AutoLayout来进行尺寸适配的话，使用代码进行约束就更加头疼了。很多时候一个无法满足的约束的问题就够来回运行修改调试很长时间了。</p>
+
+<h3>Xibs</h3>
+
+<p>相对于代码，使用IB和xib文件来组织UI，可以省下大量代码和时间，从而得到更快的开发速度。如果你曾经受到过微软家Visual Basic或者其他Visual系的可视化界面的荼毒与残害，因此怀疑Interface Builder的纯正血统和工作能力，建议可以看看这些资料以纠正三观：<a href="http://www.programmer.com.cn/9234/">Jean-Marie Hullot的Interface Builder神话</a>，<a href="http://www.youtube.com/watch?v=viLnOVBbcsE">西装革履的青涩乔帮主在NeXT时亲手用IB构建应用</a>（需要翻墙）。另外，不妨打开你的Mac上的Application文件夹中或者iPhone上Apple家的各种应用。你会惊奇地发现，IB远比你看到的要强大：小至计算器取色器这类小工具，大至iWork三件套，Aperture或Final Cut这样的专业级应用，无一不是使用IB来完成UI制作的。</p>
+
+<p>其实IB和xib是从iOS SDK初次面世开始就是捆绑在开发者工具套装内的内容了，而到了Xcode 4之后更被直接集成到了Xcode中成为了IDE的一部分。xib设计的一大目的其实是为了良好的MVC：一般来说，单个的xib文件对应一个ViewController，而对于一些自定义的view，往往也会使用单个xib并从main bundle进行加载的方式来载入。IB帮助完成view的创建，布局和与file owner的关系映射等一些列工作。对于初学者来说，牢记xib的文件都是view的内容，有助于建立起较好的MVC的概念，从而在开发中避免或少走弯路。</p>
+
+<p>xib文件之前一大被诟病的问题是文件内容过于复杂，可读性很差，即使只是简单打开没有编辑也有可能造成变化而导致合并和提交的苦难。在Xcode 5中Apple大幅简化了xib文件的格式，使其变得易读易维护。可以说现在对于xib文件在版本管理上其实和纯代码已经没有太大差异，只要仔细看过一遍xib的文件内容，自然能理解绝大部分，并很好地追踪并查找过往的修改记录了。</p>
+
+<p>当然xib也不是完美的。最大的问题在于xib中的设置往往并非最终设置，在代码中你将有机会覆盖你在xib文件中进行的UI设计。在不同的地方对同一个属性进行设置，这在之后的维护中将会是噩梦般的存在。因为其实IB还是有所局限的，它没有逻辑判断，也很难在运行时进行配置，而反之使用代码确是无所不能的。在使用xib时，辅以部分代码来补充和完成功能几乎是不可避免的。关于这点在开发时应该予以高度重视，如果选择xib，那么要尽量将xib的工作和代码的工作隔离开来：能够使用xib完成的内容就统一使用xib来做，而不要说三个Label其中两个在xib设置了字体而另一个却在代码中完成。尽量仅保持必要的、较少的IBOutlet和IBAction会是一个好方法。</p>
+
+<h3>StoryBoard</h3>
+
+<p>iOS5之后Apple提供了一种全新的方式来制作UI，那就是StoryBoard。简单理解来说，可以把StoryBoard看做是一组viewController对应的xib，以及它们之间的转换方式的集合。在StoryBoard中不仅可以看到每个ViewController的布局样式，也可以明确地知道各个ViewController之间的转换关系。相对于单个的xib，其代码需求更少，也由于集合了各个xib，使得对于界面的理解和修改的速度也得到了更大提升。减少代码量就是减少bug量，这也是程序开发中的真理之一。</p>
+
+<p>在Xcode5之后，StoryBoard已经成为新建项目的默认配置，这也代表了Apple对开发者的建议和未来的方向。WWDC2013的各个Sample Code中也基本都使用了StoryBoard来进行演示。可以预见到，之后Apple必定会在这方面进行继续强化，而反之纯代码或者单个xib的方式很可能不会再得到增强。</p>
+
+<p>如果不考虑iOS版本的支持（其实说实话现在已经很少还见到要从iOS4开始支持的app了吧），现在StoryBoard面临的最大问题就是多人协作。因为所有的UI都定义在一个文件中，因此很多开发者个人或企业的技术负责人认为StoryBoard是无法进行协作开发的，其实这更多的是一种对StoryBoard的陌生所造成的误解。虽然Apple并没有在WWDC明确提及，但是没有人规定整个项目只能有一个StoryBoard文件。一种可行的做法是将项目的不同部分分解成若干个StoryBoard，并安排开发人员对自己的部分进行负责。简单举例比如一个有4个tab功能相互独立的基于UITabBarViewController的应用，完全可以使用4个StoryBoard来分别代表4个tab，并在相互无干扰的情况下完成开发。这样一来就不会存在所谓的冲突问题了。StoryBoard的API是如此简单，现在的SDK中一共方法数量一只手就能数过来，所以具体方法在这里就不再罗嗦了。</p>
+
+<p>StoryBoard的另外的挑战来源于ViewController的重用和自定义的view的处理。对于前者，在正确封装接口以及良好设计的基础上，其实StoryBoard的VC重用与代码的VC重用是没有本质区别的，在StoryBoard中添加封装良好需要重用的Scene即可解决。而对于后者，因为StoryBoard中已经不允许有单个view的存在，因此很多时候我们还是需要借助于单个的xib来自定义UI。这一点可以说是由于StoryBoard的设计思路所造成的，StoryBoard更强调的是一种层次结构，是在全局的视角上来组织UI设计和迁移。而对于单个的view，更多的会注重于重用和定制，而与整个项目的流程没有太大关系。相信抓住这一要点，就能很好地了解什么时候使用xib，什么时候使用StoryBoard。</p>
+
+<p>关于StoryBoard最后要说的是，现在会有一些对于StoryBoard性能上的担忧。因为相对于单个xib来说，StoryBoard文件往往更大，加载速度也相应变慢。但是其实随着现在设备的更新换代，在iPhone4都难觅的今天，这点性能上的差距几乎可以忽略了。而再之后的设备，不论读取还是解析，只会越来越快。所以性能上的问题完全是没有担心的必要的。</p>
+
+<h3>我的观点和选择</h3>
+
+<p>我入门的时候是使用xib的，因为那时候还没有StoryBoard，而我也不是喜欢代码的学院派Geek。到现在，三种方式我都有尝试过，并分别得到了一些可能还并不是特别深刻体会。对于现在的我来说，xib是我的奶酪，也是我在自己的一些项目里一直使用的方式，我可以在极短短时间内用xib架起一套包括自定义要素和良好部件重用性复杂UI。但是在我尝试了几次使用StoryBoard制作demo之后，我已经决定在之后的项目转向使用StoryBoard。一方面因为确实是未来方向（每次新工程删StoryBoard很讨厌..），现在的StoryBoard专有的preview功能，以及之后AutoLayout的进一步改进等都很值得期待；另一方面也觉得奶酪放一个地方太久了会不好，趁着iOS7的大变革，也更新一下自己的观念和方式，把奶酪换个地方摆摆，也许会对以后大有裨益。</p>
+
+<p>对于初心者来说，我并不建议上手就直接使用代码来进行UI制作和布局，因为冗长的UI代码确实非常乏味无趣。尽快看到成品，至少尽快看到原型，是保持兴趣，继续深入和从事职业的有效动力。所以如果有可能有条件，在老鸟的指导下选择StoryBoard来进行快速构建（或者如果是单个人开发的话，可以不用考虑多个StoryBoard协作，就更容易），会是入门的好选择。而最新的教程和文档已经开始逐渐偏向StoryBoard，关于StoryBoard的问题在SO上关注度也会更高，这样在入门时会有更多的资料可以进行参考。</p>
+
+<p>这并不是说不需要关心代码UI或者xib，因为使用StoryBoard的时候在只能使用代码以及自定义单个view时，还是不可避免地需要接触它们的。这里想给的一点建议就是，虽然你不依赖代码来进行UI制作，但是了解并掌握如何使用纯代码来从头构建UI还是非常必要的：包括从新建Window开始，到初始化ViewController，添加必要的view，设定它们的property，以及添加和处理它们的各种响应及responser链等内容。现在iOS开发入门非常容易，Xcode和xib/StoryBoard帮助开发者隐藏了太多的细节，但是很多时候如果你不明白underhood到底是些什么，为什么这些xib/StoryBoard会这样运作的话，经常会出现卡在一些很可笑的和初级的bug上找不着北，这其实会是对时间的巨大浪费，很不值得。</p>
+
+<h3>一些IB小技巧</h3>
+
+<p>最后分享一些IB使用上的小技巧作为结束吧。其中很多方法也可以用在StoryBoard上，所以在向我自己之前xib使用者生涯致敬的同时，也算是一点小的备忘总结吧。</p>
+
+<h4>同时添加多个outlet</h4>
+
+<p>在IB中，选中一个view并右键点击，将会出现灰色的HUD，可以在其上方便地拖拉或设定事件和outlet。你可以同时打开多个这样的面板来一次性添加所有outlet。右键点击面板，随便拖动一下面板，然后再打开另一个。你会发现前一个面板也留下来了，这样你就可以方便地进行拖拽设定了。</p>
+
+<p><img src="http://img.onevcat.com/2013/IB-tip1.png" alt="多个Outlet HUD" /></p>
+
+<p>当然，对于成组和行为类似的IBOutlet，应该直接使用IBOutletCollection来进行处理会更方便。</p>
+
+<h4>可视化坐标距离</h4>
+
+<p>IB最烦人的问题就是对其。用代码的时候我们可以明确地指定x,y坐标，但是换到IB的时候我们更多的时候是靠拖拽UIView来布局。比如需要三个间隔相同的label，除了用强大的肉眼来估测距离是否相等以外，难道只能乖乖分别选中三个label，记下它们的坐标然后打开计算器来做加减法么？</p>
+
+<p>显然不要那么笨，试试看选中一个label，然后按住option键并将鼠标移动到其他label上试试？你可以发现view之间的距离都以很容易理解的方式显示出来了。不仅是同层次的view，被选中view与其他层次的view之间的距离关系也可以同样显示。</p>
+
+<p><img src="http://img.onevcat.com/2013/IB-tip2.png" alt="显示View之间的距离" /></p>
+
+<h4>在一组view层次中进行选择</h4>
+
+<p>对于一些复杂的view层级关系，我们往往直接在IB中选择会比较困难。比如view相互覆盖时，我们很难甚至不能在编辑视图中选中底层的view。这时候一般的做法是打开左侧的view层级面板，一层层展开然后选择自己需要的view。其实我们也有更简单的方法：按住<code>Cmd</code>和<code>Shift</code>，然后在需要选择的view上方按右键，就可以列出在点击位置上所有的view的列表。藉此就可以方便快速地选中想要的view了。</p>
+
+<p><img src="http://img.onevcat.com/2013/IB-tip3.png" alt="在编辑视图中选则底层view" /></p>
+
+<h4>添加辅助线</h4>
+
+<p>这么高大上的技巧必须放在最后啊...在左边的层级列表中双击某个view，然后<code>Cmd+_</code>或者<code>Cmd+|</code>即可在选中的view上添加一条水平或者垂直中心的辅助线。当然这个辅助线是可以随意移动的。如果干过设计的同学肯定明白这个的意义了，在之后的对其和设计变更的时候都有重要的参考价值。</p>
+
+<p><img src="http://img.onevcat.com/2013/IB-tip4.png" alt="为IB添加辅助线" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS内购实现及测试Check List]]></title>
+    <link href="http://onevcat.com/2013/11/ios-iap-checklist/"/>
+    <updated>2013-11-18T22:08:00+09:00</updated>
+    <id>http://onevcat.com/2013/11/ios-iap-checklist</id>
+    <content type="html"><![CDATA[<p><img src="http://img.onevcat.com/2013/cannot-connect-its.png" alt="image" /></p>
+
+<p>免费+应用内购买的模式已经被证明了是最有效的盈利模式，所以实现内购功能可能是很多开发者必做的工作和必备的技能了。但是鉴于内购这块坑不算少，另外因为sandbox测试所需要特定的配置也很多，所以对于经验不太多的开发者来说很容易就遇到各种问题，并且测试时出错Apple给出的也只有“Can not connect iTunes Store”或者"Invalid Product IDs"之类毫无价值的错误提示，并没有详细的错误说明，因此调试起来往往没有方向。有老前辈在<a href="http://troybrant.net/blog/2010/01/invalid-product-ids/">这里</a>整理过一个相对完整的check list了，但是因为年代已经稍微久远，所以内容上和现在的情况已经有一些出入。趁着在最近两个项目里做内购这块遇到的新问题，顺便在此基础上总结整理了一份比较新的中文Check list，希望能帮到后来人。</p>
+
+<p>如果您在实现和测试iOS应用内购的时候遇到问题，可以逐一对照下面所列出的条目，并逐一进行检查。相信可以排除大部分的错误。如果您遇到的问题不在这个列表范围内，欢迎在评论中指出，我会进行更新。</p>
+
+<ul>
+<li>您是否在iOS Dev Center中打开了对应应用AppID的<code>In-App Purchases</code>功能？登陆iOS Dev Center的Certificates, Identifiers &amp; Profiles下，在Identifiers中找到正在开发的App，In-App Purchase一项应当显示Enabled（如果使用Xcode5，可以直接在Xcode的Capabilities页面中打开In-App Purchases）。</li>
+<li>您是否在iTunes Connect中注册了您的IAP项目，并将其设为Cleared for Sale？</li>
+<li>您的plist中的<code>Bundle identifier</code>的内容是否和您的AppID一致？</li>
+<li>您是否正确填写了Version（CFBundleVersion）和Build（CFBuildNumber）两个数字？两者缺一不可。</li>
+<li>您用代码向Apple申请售卖物品列表时是否使用了完整的在iTC注册的Product ID？（使用在IAP管理中内购项目的Product ID一栏中的字符串）</li>
+<li>您是否在打开IAP以后重新生成过包含IAP许可的provisioning profile？</li>
+<li>你是否重新导入了新的包含IAP的provisioning profile？建议在Organizer中先删掉原来设备上的老的provisioning profile。</li>
+<li>您是否在用包含IAP的provisioning profile在部署测试程序？在Xcode5中，建议使用General中的Team选项来自动管理。</li>
+<li>您是否是在模拟器中测试IAP？虽然理论上说模拟器在某些情况下可以测试IAP，但是条件很多也不让人安心，因此您确实需要一台真机来做IAP测试。</li>
+<li>您是在企业版发布中测试IAP么？因为企业版没有iTC进行内购项目管理，也无法发布AppStore应用，所以您在企业版的build中不能使用IAP。</li>
+<li>您是否将设备上原来的app删除了，并重新进行了安装？记得在安装前做一下Clean和Clean Build Folder。</li>
+<li>您是否在运行应用前将设备上实际的Apple ID登出了？建议在设置->iTunes Store和App Stroe中将使用中的Apple ID登出，以未登录状态进入应用进行测试。</li>
+<li>你是否使用的是Test User？如果你还没有创建Test User，你需要到iTC中创建。</li>
+<li>您使用的测试账号是否是美国区账号？虽然不是一定需要，但是鉴于其他地区的测试账号经常抽风，加上美国区账号一直很稳定，因此强烈建议使用美国区账号。正常情况下IAP不需要进行信用卡绑定和其他信息填写，如果你遇到了这种情况，可以试试删除这个测试账号再新建一个其他地区的。</li>
+<li>您是否有新建账户进行测试？可能的话，可以使用新建测试账户试试看，因为某些特定情况下测试账户会被Apple锁定。</li>
+<li>您的应用是否是被拒状态（Rejected）或自己拒绝（Developer Rejected）了？被拒绝状态的应用的话对应还未通过的内购项目也会一起被拒，因此您需要重新将IAP项目设为Cleared for Sale。</li>
+<li>您的应用是否处于等待开发者发布（Pending Developer Release）状态？等待发布状态的IAP是无法测试的。</li>
+<li>您的内购项目是否是最近才新建的，或者进行了更改？内购项目需要一段时间才能反应到所有服务器上，这个过程一般是一两小时，也可能再长一些达到若干小时。</li>
+<li>您在iTC中Contracts, Tax, and Banking Information项目中是否有还没有设置或者过期了的项目？不完整的财务信息无法进行内购测试。</li>
+<li>您是在越狱设备上进行内购测试么？越狱设备不能用于正常内购，您需要重装或者寻找一台没有越狱的设备。</li>
+<li>您是否能正常连接到Apple的服务器，你可以访问<a href="https://devforums.apple.com/community/ios/connected/purchase">Apple开发者论坛关于IAP的板块</a>，如果苹果服务器正down掉，那里应该有热烈的讨论。</li>
+</ul>
+
+
+<hr />
+
+<p>如果您正在寻找一份手把手教你实现IAP的教程的话，这篇文章不是您的菜。关于IAP的实现和步骤，可以参考下面的教程：</p>
+
+<ul>
+<li>苹果的<a href="https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/StoreKitGuide/Introduction.html">官方IAP指南</a>和相应的<a href="https://developer.apple.com/library/mac/technotes/tn2259/_index.html">Technical Note</a></li>
+<li>Ray Wenderlich的<a href="http://www.raywenderlich.com/23266/in-app-purchases-in-ios-6-tutorial-consumables-and-receipt-validation">iOS6 IAP教程</a></li>
+<li>一篇图文并茂的<a href="http://blog.csdn.net/xiaominghimi/article/details/6937097">中文教程</a></li>
+<li>直接使用大神们封好的Store有关的库，比如<a href="https://github.com/mattt/CargoBay">mattt/CargoBay</a>，<a href="https://github.com/robotmedia/RMStore">robotmedia/RMStore</a>或者<a href="https://github.com/MugunthKumar/MKStoreKit">MugunthKumar/MKStoreKit</a>。推荐前两个，因为MKStoreKit有一些恼人的小bug。</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
