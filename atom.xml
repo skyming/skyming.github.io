@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>skyming</title>
+  <subtitle>我想要的一定会得到</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://skyming.me/"/>
+  <updated>2016-03-11T07:12:20.000Z</updated>
+  <id>http://skyming.me/</id>
+  
+  <author>
+    <name>skyming</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Github + Hexo 搭建个人博客</title>
+    <link href="http://skyming.me/2016/03/11/github-hexo/"/>
+    <id>http://skyming.me/2016/03/11/github-hexo/</id>
+    <published>2016-03-11T06:28:44.000Z</published>
+    <updated>2016-03-11T07:12:20.000Z</updated>
+    
+    <content type="html">&lt;p&gt;hexo 是一个快速、简洁且高效的博客框架。Hexo 使用 Markdown（或其他渲染引擎）解析文章，在几秒内，即可利用靓丽的主题生成静态网页，相比jekyll生成静态网页的速度更快。我使用hexo的原因是 hauk之前用过。哈哈，以下是一些不错的资源。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://hexo.io/zh-cn/docs/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;&lt;strong&gt;Hexo 文档&lt;/strong&gt;&lt;/a&gt;&lt;br&gt;文档描述非常详细，而且是中文的，文档大概分为 开始使用、基本操作、自定义、常见问题 四个方面，不稳定的是有时候打不开需要 VPN 翻墙，在安装过程中也需要翻墙，某些主题也是需要翻墙才可以正常安装，否则样式会有问题。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://zipperary.com/categories/hexo/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;&lt;strong&gt;Zippera’s blog&lt;/strong&gt;&lt;/a&gt;&lt;br&gt;Zippera’s blog 有个 Hexo 专题对在安装、主题安装、插件整合等过程，遇到的每个坑介绍的很详细，非常不错&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://segmentfault.com/a/1190000003880479&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;&lt;strong&gt;SegmentFault 中扒到的一篇 hexo 实践经验谈&lt;/strong&gt;&lt;/a&gt;&lt;br&gt;文章里面介绍了些 文章编辑细节问题，也分享了多说评论等不少实践经验。&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;hexo 是一个快速、简洁且高效的博客框架。Hexo 使用 Markdown（或其他渲染引擎）解析文章，在几秒内，即可利用靓丽的主题生成静态网页，相比jekyll生成静态网页的速度更快。我使用hexo的原因是 hauk之前用过。哈哈，以下是一些不错的资源。&lt;/p&gt;
+&lt;ul&gt;
+    
+    </summary>
+    
+      <category term="技术" scheme="http://skyming.me/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+    
+      <category term="Hexo" scheme="http://skyming.me/tags/Hexo/"/>
+    
+  </entry>
+  
+</feed>
