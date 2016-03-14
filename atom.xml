@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://skyming.me/"/>
-  <updated>2016-03-14T10:51:37.000Z</updated>
+  <updated>2016-03-14T10:53:27.000Z</updated>
   <id>http://skyming.me/</id>
   
   <author>
@@ -16,11 +16,11 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
-    <title>appledoc-guide</title>
+    <title>iOS 文档生成工具</title>
     <link href="http://skyming.me/2016/03/14/appledoc-guide/"/>
     <id>http://skyming.me/2016/03/14/appledoc-guide/</id>
     <published>2016-03-14T10:40:35.000Z</published>
-    <updated>2016-03-14T10:51:37.000Z</updated>
+    <updated>2016-03-14T10:53:27.000Z</updated>
     
     <content type="html">&lt;p&gt;做SDK的，文档是必须的。今天整理了一些生成文档的工具。在代码写注释的同时，可以从源码中抽取文档。是不是一个非常神奇的工具。&lt;/p&gt;
 &lt;hr&gt;
