@@ -12,12 +12,12 @@
           "apps": [],
           "details": [
               {
-                  "appID": "6Y97E3KB4K.com.skyming.passportsdk",
-                  "paths": [ "*" ]
+                  "appID": "75BF75R4NH.com.wuba.passportsdk",
+                  "paths": [ "*", "/qq_conn/101493879/*" ]
               },              
               {
-                  "appID": "6Y97E3KB4K.com.skyming.github.io",
-                  "paths": [ "*" ]
+                  "appID": "6Y97E3KB4K.com.skyming.passportsdk",
+                  "paths": [ "*", "/qq_conn/101493879/*" ]
               }
 
           ]
