@@ -7,19 +7,19 @@
       "75BF75R4NH.com.inhouse58.iphone",
       "264768N22C.com.ganji.life"
     ]
-  }
-        "applinks": {
-          "apps": [],
-          "details": [
-              {
-                  "appID": "75BF75R4NH.com.wuba.passportsdk",
-                  "paths": [ "*", "/qq_conn/101493879/*" ]
-              },              
-              {
-                  "appID": "6Y97E3KB4K.com.skyming.passportsdk",
-                  "paths": [ "*", "/qq_conn/101493879/*" ]
-              }
+  },
+  "applinks": {
+    "apps": [],
+    "details": [
+        {
+            "appID": "75BF75R4NH.com.wuba.passportsdk",
+            "paths": [ "*", "/qq_conn/101493879/*" ]
+        },              
+        {
+            "appID": "6Y97E3KB4K.com.skyming.passportsdk",
+            "paths": [ "*"]
+        }
 
-          ]
-      }
+    ]
+  }
 }
