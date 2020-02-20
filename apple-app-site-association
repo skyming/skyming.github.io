@@ -13,9 +13,8 @@
     "details": [
         {
             "appID": "6Y97E3KB4K.com.skyming.passportsdk",
-            "paths": [ "*"]
+            "paths": [ "/qq_conn/1107789032/*"]
         }
-
     ]
   }
 }
