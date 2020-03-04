@@ -14,7 +14,12 @@
         {
             "appID": "6Y97E3KB4K.com.skyming.passportsdk",
             "paths": [ "/qq_conn/1107789032/*"]
+        },
+        {
+            "appID": "6Y97E3KB4K.com.wuba.passportsdk.xiaohan",
+            "paths": [ "/qq_conn/101858048/*"]
         }
+
     ]
   }
 }
