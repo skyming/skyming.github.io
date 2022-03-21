@@ -3,8 +3,6 @@
     "apps": [
       "DP333839GN.com.skyming.passportsdk",
       "75BF75R4NH.com.wuba.passportsdk",
-      "EJA352Y795.com.taofang.iphone",
-      "75BF75R4NH.com.inhouse58.iphone",
       "264768N22C.com.ganji.life"
     ]
   },
@@ -18,12 +16,7 @@
         {
             "appID": "75BF75R4NH.com.wuba.passportsdk",
             "paths": [ "/qq_conn/101493879/*"]
-        },
-        {
-            "appID": "6Y97E3KB4K.com.wuba.passportsdk.xiaohan",
-            "paths": [ "/qq_conn/101858048/*"]
         }
-
     ]
   }
 }
