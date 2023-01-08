@@ -17,12 +17,6 @@
     getNetworkConnectionChange();
     getNetworkOnLineChange();
 
-    setTimeout(() => {
-      var ua = navigator.userAgent;
-      var networkStr = ua.match(/NetType\/\w+/) ? ua.match(/NetType\/\w+/)[0] : 'NetType/other';
-      networkStr = networkStr.toLowerCase().replace('nettype/', '');
-          updateText("p2", "定时器网络状态：" + networkStr);
-    }, 2000);
   };
 
   // connection 的兼容性较低，谨慎使用
@@ -60,6 +54,12 @@
     document.getElementById(id).textContent = msg;
     console.log(msg);
   }
+  setTimeout(() => {
+  var ua = navigator.userAgent;
+  var networkStr = ua.match(/NetType\/\w+/) ? ua.match(/NetType\/\w+/)[0] : 'NetType/other';
+  networkStr = networkStr.toLowerCase().replace('nettype/', '');
+      updateText("p2", "定时器网络状态：" + ua);
+  }, 2000);
 
 </script>
 </body>
