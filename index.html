@@ -60,7 +60,6 @@
     networkStr = networkStr.toLowerCase().replace('nettype/', '');
     let isIOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端  
     if (isIOS) {
-        this.ws3Task.reconnect(); 
     }
     updateText("p1", "平台类型是否iOS：" + isIOS);
     updateText("p2", "定时器网络状态：" + ua);
