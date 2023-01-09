@@ -58,7 +58,7 @@
     var ua = navigator.userAgent;
     var networkStr = ua.match(/NetType\/\w+/) ? ua.match(/NetType\/\w+/)[0] : 'NetType/other';
     networkStr = networkStr.toLowerCase().replace('nettype/', '');
-    let isIOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端  
+    let isIOS = !!ua.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端  
     if (isIOS) {
     }
     updateText("p1", "平台类型是否iOS：" + isIOS);
