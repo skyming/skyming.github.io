@@ -75,6 +75,7 @@
             var img = document.getElementById('dynamicImage');
             if (!img) {
                 img = document.createElement('img');
+                img.crossOrigin = 'anonymous'
                 img.id = 'dynamicImage';
                 img.style.maxWidth = '100%';
                 document.body.appendChild(img);

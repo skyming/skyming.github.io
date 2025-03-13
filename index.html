@@ -76,6 +76,7 @@
             var img = document.getElementById('mainFrameImage');
             if (!img) {
                 img = document.createElement('img');
+                img.crossOrigin = 'anonymous'
                 img.id = 'mainFrameImage';
                 img.style.maxWidth = '100%';
                 document.body.appendChild(img);
