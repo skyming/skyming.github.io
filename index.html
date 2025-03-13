@@ -6,8 +6,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WKURLSchemeHanlder Demo</title>
-    <link rel="stylesheet" href="index.css">
-    <script src="index.js"></script>
+
     <style>
         body {
             margin: 0;
@@ -34,7 +33,13 @@
             color: white;
             cursor: pointer;
             -webkit-appearance: none;
+            -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            user-select: none;
+        }
+
+        input[type="button"]:active {
+            opacity: 0.8;
         }
 
         img {
@@ -57,11 +62,31 @@
             }
         }
     </style>
+
+    <script>
+        function handleMainFrameClick() {
+            var btn = document.getElementsByName("main-btn")[0];
+            alert(btn.value);
+
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.WVRChatSendMessageToNative) {
+                window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', btn.value]);
+            }
+
+            // 创建或更新图片元素
+            var img = document.getElementById('mainFrameImage');
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'mainFrameImage';
+                img.style.maxWidth = '100%';
+                document.body.appendChild(img);
+            }
+            img.src = 'wvrhttp://2.jpg';
+        }
+    </script>
 </head>
 
 <body>
     <h1>WKURLSchemeHanlder Demo</h1>
-    <div class="div1">photo1</div>
     <img src="wvrhttp://1.jpg" width="auto" height="400">
     <div class="button-container">
         <input type="button" name="main-btn" value="主Frame按钮" onClick="handleMainFrameClick()">

@@ -27,7 +27,13 @@
             color: white;
             cursor: pointer;
             -webkit-appearance: none;
+            -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            user-select: none;
+        }
+
+        input[type="button"]:active {
+            opacity: 0.8;
         }
 
         @media screen and (max-width: 768px) {
@@ -42,7 +48,9 @@
             var btn = document.getElementsByName("iframe-btn")[0];
             alert(btn.value);
 
-            window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', btn.value]);
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.WVRChatSendMessageToNative) {
+                window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', btn.value]);
+            }
 
             // 创建或更新图片元素
             var img = document.getElementById('dynamicImage');
