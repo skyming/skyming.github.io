@@ -1,6 +1,7 @@
 function btn_onclick() {
     var btn = document.getElementsByName("b1")[0];
     console.log(btn.value);
+    alert(btn.value);
 
     var str = getWVRChatConfig();
     // 简化条件判断，直接赋值
