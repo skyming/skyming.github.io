@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title> iframe </title>
+    <script>
+        function handleIframeClick() {
+            var btn = document.getElementsByName("iframe-btn")[0];
+
+            // 创建或更新图片元素
+            var img = document.getElementById('dynamicImage');
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'dynamicImage';
+                img.style.maxWidth = '100%';
+                document.body.appendChild(img);
+            }
+            img.src = 'wvrhttp://3.jpg';
+        }
+    </script>
+</head>
+
+<body>
+    <input type="button" name="iframe-btn" value="iframe按钮" onClick="handleIframeClick()"
+        style="width:100px; height:60px; font-size:24px">
+</body>
+
+</html>

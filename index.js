@@ -1,5 +1,5 @@
-function btn_onclick() {
-    var btn = document.getElementsByName("b1")[0];
+function handleMainFrameClick() {
+    var btn = document.getElementsByName("main-btn")[0];
     console.log(btn.value);
     alert(btn.value);
 
@@ -15,5 +15,5 @@ function btn_onclick() {
         img.style.maxWidth = '100%';
         document.body.appendChild(img);
     }
-    img.src = 'wvrhttp://photo2.png'; // 替换为你的实际图片URL
+    img.src = 'wvrhttp://2.jpg';
 }
