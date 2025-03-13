@@ -3,18 +3,70 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WKURLSchemeHanlder Demo</title>
     <link rel="stylesheet" href="index.css">
     <script src="index.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        input[type="button"] {
+            width: 180px;
+            height: 60px;
+            font-size: 20px;
+            border-radius: 8px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            -webkit-appearance: none;
+            touch-action: manipulation;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        iframe {
+            width: 100%;
+            height: 80px;
+            border: none;
+        }
+
+        @media screen and (max-width: 768px) {
+            input[type="button"] {
+                height: 50px;
+                font-size: 16px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <h1>WKURLSchemeHanlder Demo</h1>
     <div class="div1">photo1</div>
     <img src="wvrhttp://1.jpg" width="auto" height="400">
-    <input type="button" name="main-btn" value="主Frame按钮" onClick="handleMainFrameClick()">
-    <iframe src="button.html" width="100%" height="150" frameborder="0"></iframe>
+    <div class="button-container">
+        <input type="button" name="main-btn" value="主Frame按钮" onClick="handleMainFrameClick()">
+        <iframe src="button.html" frameborder="0"></iframe>
+    </div>
 </body>
 
 </html>

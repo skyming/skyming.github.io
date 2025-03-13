@@ -3,12 +3,46 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title> iframe </title>
-    <link rel="stylesheet" href="index.css">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>iframe</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        input[type="button"] {
+            width: 180px;
+            height: 60px;
+            font-size: 20px;
+            border-radius: 8px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            -webkit-appearance: none;
+            touch-action: manipulation;
+        }
+
+        @media screen and (max-width: 768px) {
+            input[type="button"] {
+                height: 50px;
+                font-size: 16px;
+            }
+        }
+    </style>
     <script>
         function handleIframeClick() {
             var btn = document.getElementsByName("iframe-btn")[0];
+            alert(btn.value);
+
+            window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', btn.value]);
 
             // 创建或更新图片元素
             var img = document.getElementById('dynamicImage');

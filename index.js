@@ -1,11 +1,10 @@
 function handleMainFrameClick() {
     var btn = document.getElementsByName("main-btn")[0];
-    console.log(btn.value);
     alert(btn.value);
+    window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', btn.value]);
 
     var str = getWVRChatConfig();
-    // 简化条件判断，直接赋值
-    btn.value = str;
+    window.webkit.messageHandlers.WVRChatSendMessageToNative.postMessage(['WVRChatOutputLog', str]);
 
     // 创建或更新图片元素
     var img = document.getElementById('dynamicImage');
